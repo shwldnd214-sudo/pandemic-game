@@ -86,7 +86,6 @@ function render() {
 
         let labelHtml = `<div class="city-label" style="color:${c.color}">${name}${c.hasResearchStation?'🏢':''}</div>`;
         
-        // 🔥 수정: 여러 색상의 질병 배지가 중복 표시될 수 있도록 나란히 렌더링
         let cubeHtml = '';
         let offset = 0;
         for(let col in c.cubes) {
@@ -135,11 +134,56 @@ function render() {
     }
 }
 
-function openModal(name) { targetCity = name; document.getElementById('modal-city-name').innerText = name; document.getElementById('action-modal').style.display='block'; }
-function closeModal() { document.getElementById('action-modal').style.display='none'; }
-function sendAction(type) { socket.emit('playerAction', {type, target: targetCity}); closeModal(); }
+// 💡 [수정] 도시 클릭 시 열리는 모달에서, '운항 관리자'인 경우 다른 플레이어를 조종할 수 있는 선택 창을 띄우는 로직 추가
+function openModal(name) { 
+    targetCity = name; 
+    document.getElementById('modal-city-name').innerText = name; 
+    
+    let myPlayer = localState.players[socket.id];
+    let selectBox = document.getElementById('target-mover-select');
+    
+    // index.html에 해당 select 태그가 제대로 추가되어 있는지 확인 후 실행
+    if (selectBox) {
+        if (myPlayer && myPlayer.role === '운항 관리자') {
+            selectBox.style.display = 'block';
+            selectBox.innerHTML = '<option value="">(내 말 움직이기)</option>';
+            
+            // 본인을 제외한 다른 플레이어 목록을 드롭다운에 추가
+            for (let id in localState.players) {
+                if (id !== socket.id) {
+                    let p = localState.players[id];
+                    selectBox.innerHTML += `<option value="${id}">${p.role} (현재: ${p.location})</option>`;
+                }
+            }
+        } else {
+            selectBox.style.display = 'none'; // 운항 관리자가 아니면 무조건 숨김
+        }
+    }
 
-// 🔥 수정: 여러 색상이 섞여 있을 때 어떤 색을 치료할지 골라 요청하는 로직
+    document.getElementById('action-modal').style.display='block'; 
+}
+
+function closeModal() { document.getElementById('action-modal').style.display='none'; }
+
+// 💡 [수정] 이동 버튼 클릭 시, 선택한 조종 대상(targetMoverId)도 서버로 함께 전송
+function sendAction(type) { 
+    let targetMoverId = null;
+    let selectBox = document.getElementById('target-mover-select');
+    
+    // select 창이 띄워져 있고, 값이 선택되어 있다면 그 값을 targetMoverId로 설정
+    if (selectBox && selectBox.style.display === 'block' && selectBox.value !== "") {
+        targetMoverId = selectBox.value;
+    }
+
+    socket.emit('playerAction', {
+        type: type, 
+        target: targetCity,
+        targetMoverId: targetMoverId
+    }); 
+    
+    closeModal(); 
+}
+
 function treat() { 
     const my = localState.players[socket.id];
     const city = localState.cities[my.location];
@@ -165,7 +209,6 @@ function treat() {
 function build() { socket.emit('playerAction', {type:'build'}); }
 function cure() { socket.emit('playerAction', {type:'discoverCure'}); }
 
-// 🔥 수정: 어떤 카드를 넘겨줄지 직접 이름으로 적어 주는 지식 공유 로직
 function share() { 
     const my = localState.players[socket.id];
     const partner = Object.values(localState.players).find(p => p.id !== socket.id);

@@ -65,12 +65,17 @@
     </div>
 
     <div id="role-overlay">
-        <h2 style="margin-bottom:20px;">🎭 보직을 선택하세요</h2>
+        <h2 style="margin-bottom:20px;">🎭 보직을 선택하세요!!!!</h2>
         <div id="role-container" style="display:flex; flex-wrap:wrap; justify-content:center; max-width: 900px;"></div>
     </div>
 
     <div id="action-modal" class="modal">
         <h3 id="modal-city-name" style="margin-bottom:15px; text-align:center;">도시</h3>
+        
+        <select id="target-mover-select" style="display:none; width:100%; padding:10px; margin-bottom:15px; background:#0f172a; color:white; border:1px solid #475569; border-radius:6px;">
+            <option value="">(내 말 움직이기)</option>
+        </select>
+
         <button class="btn-action" style="background:#475569;" onclick="sendAction('move_drive')">🚗 차량/연락선 이동</button>
         <button class="btn-action" style="background:#475569;" onclick="sendAction('move_direct')">✈️ 직항 비행</button>
         <button class="btn-action" style="background:#475569;" onclick="sendAction('move_charter')">🗺️ 전역 노선</button>

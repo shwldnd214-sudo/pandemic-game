@@ -72,13 +72,11 @@ function initGame() {
         gameState.cities[name] = { 
             color: cityData[name].color, 
             neighbors: cityData[name].neighbors, 
-            // 🔥 각 색상별 질병 개수를 독립적으로 관리하도록 변경
             cubes: { "#3498db": 0, "#f1c40f": 0, "#7f8c8d": 0, "#e74c3c": 0 }, 
             hasResearchStation: (name === "애틀랜타") 
         };
     }
 
-    // 초기 감염 세팅 (각 도시 고유의 색상 질병이 생김)
     for (let i = 3; i >= 1; i--) {
         for (let j = 0; j < 3; j++) {
             let c = gameState.infectionDeck.pop();
@@ -108,7 +106,6 @@ function checkEradication(color) {
     }
 }
 
-// 🔥 질병 색상을 인자로 받아 어떤 색상이든 중복 누적 및 확산이 가능하도록 변경
 function infectCity(cityName, diseaseColor, cubesToAdd = 1, visited = {}) {
     if (visited[cityName]) return;
     visited[cityName] = true;
@@ -130,7 +127,6 @@ function infectCity(cityName, diseaseColor, cubesToAdd = 1, visited = {}) {
         gameState.outbreaks++;
         gameState.log.unshift(`⚠️ [확산] ${cityName}에서 [${diseaseColor}] 질병 연쇄 확산!! (${gameState.outbreaks}/8)`);
         if (gameState.outbreaks >= 8) gameState.gameOver = true;
-        // 확산될 때는 원래 퍼지던 질병 색상(diseaseColor) 그대로 이웃에 전파됨!
         else city.neighbors.forEach(n => infectCity(n, diseaseColor, 1, visited));
     }
 }
@@ -184,7 +180,6 @@ io.on('connection', (socket) => {
             gameState.players[socket.id] = { id: socket.id, role: roleName, roleColor: roleDetails[roleName].color, location: "애틀랜타", cards: [] };
             if (!gameState.currentTurnPlayer) gameState.currentTurnPlayer = socket.id;
             
-            // 🔥 수정: 이미 게임이 시작된 후 방에 들어온 늦둥이 친구에게도 카드 4장 지급!
             if (!gameState.gameStarted) {
                 initGame();
             } else {
@@ -238,21 +233,35 @@ io.on('connection', (socket) => {
         if(!p) return;
         let partner = Object.values(gameState.players).find(u => u.id !== socket.id);
 
-        if (data.type === 'move_drive' && cityData[p.location].neighbors.includes(data.target)) { p.location = data.target; gameState.actionsLeft--; }
+        // 💡 [추가 및 수정된 부분] 운항 관리자가 다른 플레이어를 조종할 수 있게 대상(mover)을 설정합니다.
+        let mover = p; 
+        if (p.role === '운항 관리자' && data.targetMoverId) {
+            mover = gameState.players[data.targetMoverId] || p;
+        }
+
+        // 💡 [수정된 부분] 아래 이동 관련 로직에서 p.location 대신 mover.location을 사용합니다.
+        if (data.type === 'move_drive' && cityData[mover.location].neighbors.includes(data.target)) { 
+            mover.location = data.target; 
+            gameState.actionsLeft--; 
+        }
         else if (data.type === 'move_direct') {
             let idx = p.cards.findIndex(c => c.name === data.target);
-            if (idx !== -1) { p.cards.splice(idx, 1); p.location = data.target; gameState.actionsLeft--; }
-        } else if (data.type === 'move_charter') {
-            let idx = p.cards.findIndex(c => c.name === p.location);
-            if (idx !== -1) { p.cards.splice(idx, 1); p.location = data.target; gameState.actionsLeft--; }
-        } else if (data.type === 'move_shuttle' && gameState.cities[p.location].hasResearchStation && gameState.cities[data.target].hasResearchStation) { p.location = data.target; gameState.actionsLeft--; }
+            if (idx !== -1) { p.cards.splice(idx, 1); mover.location = data.target; gameState.actionsLeft--; }
+        } 
+        else if (data.type === 'move_charter') {
+            let idx = p.cards.findIndex(c => c.name === mover.location);
+            if (idx !== -1) { p.cards.splice(idx, 1); mover.location = data.target; gameState.actionsLeft--; }
+        } 
+        else if (data.type === 'move_shuttle' && gameState.cities[mover.location].hasResearchStation && gameState.cities[data.target].hasResearchStation) { 
+            mover.location = data.target; 
+            gameState.actionsLeft--; 
+        }
         else if (data.type === 'build') {
             if (p.role === '건축 전문가' || p.cards.some(c => c.name === p.location)) {
                 if (p.role !== '건축 전문가') p.cards.splice(p.cards.findIndex(c => c.name === p.location), 1);
                 gameState.cities[p.location].hasResearchStation = true; gameState.actionsLeft--;
             }
         } 
-        // 🔥 수정: 선택한 색상의 질병 큐브를 명확하게 제거하도록 고침
         else if (data.type === 'treat') {
             let c = gameState.cities[p.location];
             let targetColor = data.color;
@@ -265,12 +274,10 @@ io.on('connection', (socket) => {
                 gameState.log.unshift(`💊 [치료] ${p.role}이(가) ${p.location}에서 질병을 치료했습니다.`);
             }
         } 
-        // 🔥 수정: 내가 원하는 카드를 명확하게 선택해서 줄 수 있도록 변경
         else if (data.type === 'share_give' && partner && partner.location === p.location) {
             let cardName = data.cardName;
             let idx = p.cards.findIndex(c => c.name === cardName);
             if (idx !== -1) {
-                // 연구원은 아무 카드나, 다른 직업은 현재 위치 도시 카드만 가능하도록 제한 검사
                 if (p.role === '연구원' || cardName === p.location) {
                     partner.cards.push(p.cards.splice(idx, 1)[0]);
                     gameState.actionsLeft--;
