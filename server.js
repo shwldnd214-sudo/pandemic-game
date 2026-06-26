@@ -7,19 +7,64 @@ const io = require('socket.io')(http, {
 
 app.use(express.static('public'));
 
+// 🔥 시카고 <-> 로스앤젤레스 연결망 수정 완료
 const cityData = {
-    "샌프란시스코": { color: "#3498db", neighbors: ["시카고", "로스앤젤레스", "도쿄", "마닐라"] }, "시카고": { color: "#3498db", neighbors: ["샌프란시스코", "몬트리올", "애틀랜타", "멕시코시티"] }, "몬트리올": { color: "#3498db", neighbors: ["시카고", "뉴욕", "워싱턴"] }, "뉴욕": { color: "#3498db", neighbors: ["몬트리올", "워싱턴", "런던", "마드리드"] }, "애틀랜타": { color: "#3498db", neighbors: ["시카고", "워싱턴", "마이매미"] }, "워싱턴": { color: "#3498db", neighbors: ["몬트리올", "뉴욕", "애틀랜타", "마이매미"] }, "런던": { color: "#3498db", neighbors: ["뉴욕", "마드리드", "파리", "에센"] }, "에센": { color: "#3498db", neighbors: ["런던", "파리", "밀라노", "상트페테르부르크"] }, "상트페테르부르크": { color: "#3498db", neighbors: ["에센", "모스크바", "이스탄불"] }, "마드리드": { color: "#3498db", neighbors: ["뉴욕", "런던", "파리", "알제", "상파울루"] }, "파리": { color: "#3498db", neighbors: ["런던", "마드리드", "밀라노", "에센", "알제"] }, "밀라노": { color: "#3498db", neighbors: ["파리", "에센", "이스탄불"] },
-    "로스앤젤레스": { color: "#f1c40f", neighbors: ["샌프란시스코", "시카고", "멕시코시티", "시드니"] }, "멕시코시티": { color: "#f1c40f", neighbors: ["시카고", "로스앤젤레스", "마이매미", "보고타"] }, "마이매미": { color: "#f1c40f", neighbors: ["애틀랜타", "워싱턴", "멕시코시티", "보고타"] }, "보고타": { color: "#f1c40f", neighbors: ["멕시코시티", "마이매미", "리마", "상파울루"] }, "리마": { color: "#f1c40f", neighbors: ["보고타", "산티아고"] }, "산티아고": { color: "#f1c40f", neighbors: ["리마"] }, "부에노스아이레스": { color: "#f1c40f", neighbors: ["산티아고", "상파울루"] }, "상파울루": { color: "#f1c40f", neighbors: ["보고타", "부에노스아이레스", "마드리드", "라고스"] }, "라고스": { color: "#f1c40f", neighbors: ["상파울루", "킨샤샤", "카르툼"] }, "킨샤샤": { color: "#f1c40f", neighbors: ["라고스", "요하네스버그", "카르툼"] }, "카르툼": { color: "#f1c40f", neighbors: ["라고스", "킨샤샤", "요하네스버그", "카이로"] }, "요하네스버그": { color: "#f1c40f", neighbors: ["킨샤샤", "카르툼"] },
-    "알제": { color: "#7f8c8d", neighbors: ["마드리드", "파리", "이스탄불", "카이로"] }, "이스탄불": { color: "#7f8c8d", neighbors: ["밀라노", "상트페테르부르크", "알제", "카이로", "바그다드"] }, "모스크바": { color: "#7f8c8d", neighbors: ["상트페테르부르크", "테헤란"] }, "테헤란": { color: "#7f8c8d", neighbors: ["모스크바", "바그다드", "카라치", "델리"] }, "바그다드": { color: "#7f8c8d", neighbors: ["이스탄불", "테헤란", "카이로", "리야드", "카라치"] }, "카이로": { color: "#7f8c8d", neighbors: ["알제", "이스탄불", "바그다드", "리야드", "카르툼"] }, "리야드": { color: "#7f8c8d", neighbors: ["카이로", "바그다드", "카라치"] }, "카라치": { color: "#7f8c8d", neighbors: ["테헤란", "바그다드", "리야드", "델리", "뭄바이"] }, "델리": { color: "#7f8c8d", neighbors: ["테헤란", "카라치", "콜카타", "뭄바이"] }, "뭄바이": { color: "#7f8c8d", neighbors: ["카라치", "델리", "첸나이"] }, "첸나이": { color: "#7f8c8d", neighbors: ["뭄바이", "콜카타", "방콕"] }, "콜카타": { color: "#7f8c8d", neighbors: ["델리", "첸나이", "방콕", "홍콩"] },
-    "베이징": { color: "#e74c3c", neighbors: ["상하이", "서울"] }, "서울": { color: "#e74c3c", neighbors: ["베이징", "도쿄", "상하이"] }, "도쿄": { color: "#e74c3c", neighbors: ["서울", "상하이", "샌프란시스코"] }, "상하이": { color: "#e74c3c", neighbors: ["베이징", "서울", "도쿄", "홍콩", "타이베이"] }, "방콕": { color: "#e74c3c", neighbors: ["첸나이", "콜카타", "홍콩", "호치민 시티", "자카르타"] }, "홍콩": { color: "#e74c3c", neighbors: ["콜카타", "상하이", "타이베이", "방콕", "호치민 시티", "마닐라"] }, "타이베이": { color: "#e74c3c", neighbors: ["상하이", "홍콩", "오사카", "마닐라"] }, "오사카": { color: "#e74c3c", neighbors: ["타이베이", "도쿄"] }, "자카르타": { color: "#e74c3c", neighbors: ["방콕", "호치민 시티", "시드니"] }, "호치민 시티": { color: "#e74c3c", neighbors: ["방콕", "홍콩", "자카르타", "마닐라"] }, "마닐라": { color: "#e74c3c", neighbors: ["홍콩", "타이베이", "호치민 시티", "시드니", "샌프란시스코"] }, "시드니": { color: "#e74c3c", neighbors: ["자카르타", "마닐라", "로스앤젤레스"] }
+    "샌프란시스코": { color: "#3498db", neighbors: ["시카고", "로스앤젤레스", "도쿄", "마닐라"] }, 
+    "시카고": { color: "#3498db", neighbors: ["샌프란시스코", "로스앤젤레스", "몬트리올", "애틀랜타", "멕시코시티"] }, 
+    "몬트리올": { color: "#3498db", neighbors: ["시카고", "뉴욕", "워싱턴"] }, 
+    "뉴욕": { color: "#3498db", neighbors: ["몬트리올", "워싱턴", "런던", "마드리드"] }, 
+    "애틀랜타": { color: "#3498db", neighbors: ["시카고", "워싱턴", "마이매미"] }, 
+    "워싱턴": { color: "#3498db", neighbors: ["몬트리올", "뉴욕", "애틀랜타", "마이매미"] }, 
+    "런던": { color: "#3498db", neighbors: ["뉴욕", "마드리드", "파리", "에센"] }, 
+    "에센": { color: "#3498db", neighbors: ["런던", "파리", "밀라노", "상트페테르부르크"] }, 
+    "상트페테르부르크": { color: "#3498db", neighbors: ["에센", "모스크바", "이스탄불"] }, 
+    "마드리드": { color: "#3498db", neighbors: ["뉴욕", "런던", "파리", "알제", "상파울루"] }, 
+    "파리": { color: "#3498db", neighbors: ["런던", "마드리드", "밀라노", "에센", "알제"] }, 
+    "밀라노": { color: "#3498db", neighbors: ["파리", "에센", "이스탄불"] },
+    "로스앤젤레스": { color: "#f1c40f", neighbors: ["샌프란시스코", "시카고", "멕시코시티", "시드니"] }, 
+    "멕시코시티": { color: "#f1c40f", neighbors: ["시카고", "로스앤젤레스", "마이매미", "보고타"] }, 
+    "마이매미": { color: "#f1c40f", neighbors: ["애틀랜타", "워싱턴", "멕시코시티", "보고타"] }, 
+    "보고타": { color: "#f1c40f", neighbors: ["멕시코시티", "마이매미", "리마", "상파울루"] }, 
+    "리마": { color: "#f1c40f", neighbors: ["보고타", "산티아고"] }, 
+    "산티아고": { color: "#f1c40f", neighbors: ["리마"] }, 
+    "부에노스아이레스": { color: "#f1c40f", neighbors: ["산티아고", "상파울루"] }, 
+    "상파울루": { color: "#f1c40f", neighbors: ["보고타", "부에노스아이레스", "마드리드", "라고스"] }, 
+    "라고스": { color: "#f1c40f", neighbors: ["상파울루", "킨샤샤", "카르툼"] }, 
+    "킨샤샤": { color: "#f1c40f", neighbors: ["라고스", "요하네스버그", "카르툼"] }, 
+    "카르툼": { color: "#f1c40f", neighbors: ["라고스", "킨샤샤", "요하네스버그", "카이로"] }, 
+    "요하네스버그": { color: "#f1c40f", neighbors: ["킨샤샤", "카르툼"] },
+    "알제": { color: "#7f8c8d", neighbors: ["마드리드", "파리", "이스탄불", "카이로"] }, 
+    "이스탄불": { color: "#7f8c8d", neighbors: ["밀라노", "상트페테르부르크", "알제", "카이로", "바그다드"] }, 
+    "모스크바": { color: "#7f8c8d", neighbors: ["상트페테르부르크", "테헤란"] }, 
+    "테헤란": { color: "#7f8c8d", neighbors: ["모스크바", "바그다드", "카라치", "델리"] }, 
+    "바그다드": { color: "#7f8c8d", neighbors: ["이스탄불", "테헤란", "카이로", "리야드", "카라치"] }, 
+    "카이로": { color: "#7f8c8d", neighbors: ["알제", "이스탄불", "바그다드", "리야드", "카르툼"] }, 
+    "리야드": { color: "#7f8c8d", neighbors: ["카이로", "바그다드", "카라치"] }, 
+    "카라치": { color: "#7f8c8d", neighbors: ["테헤란", "바그다드", "리야드", "델리", "뭄바이"] }, 
+    "델리": { color: "#7f8c8d", neighbors: ["테헤란", "카라치", "콜카타", "뭄바이"] }, 
+    "뭄바이": { color: "#7f8c8d", neighbors: ["카라치", "델리", "첸나이"] }, 
+    "첸나이": { color: "#7f8c8d", neighbors: ["뭄바이", "콜카타", "방콕"] }, 
+    "콜카타": { color: "#7f8c8d", neighbors: ["델리", "첸나이", "방콕", "홍콩"] },
+    "베이징": { color: "#e74c3c", neighbors: ["상하이", "서울"] }, 
+    "서울": { color: "#e74c3c", neighbors: ["베이징", "도쿄", "상하이"] }, 
+    "도쿄": { color: "#e74c3c", neighbors: ["서울", "상하이", "샌프란시스코"] }, 
+    "상하이": { color: "#e74c3c", neighbors: ["베이징", "서울", "도쿄", "홍콩", "타이베이"] }, 
+    "방콕": { color: "#e74c3c", neighbors: ["첸나이", "콜카타", "홍콩", "호치민 시티", "자카르타"] }, 
+    "홍콩": { color: "#e74c3c", neighbors: ["콜카타", "상하이", "타이베이", "방콕", "호치민 시티", "마닐라"] }, 
+    "타이베이": { color: "#e74c3c", neighbors: ["상하이", "홍콩", "오사카", "마닐라"] }, 
+    "오사카": { color: "#e74c3c", neighbors: ["타이베이", "도쿄"] }, 
+    "자카르타": { color: "#e74c3c", neighbors: ["방콕", "호치민 시티", "시드니"] }, 
+    "호치민 시티": { color: "#e74c3c", neighbors: ["방콕", "홍콩", "자카르타", "마닐라"] }, 
+    "마닐라": { color: "#e74c3c", neighbors: ["홍콩", "타이베이", "호치민 시티", "시드니", "샌프란시스코"] }, 
+    "시드니": { color: "#e74c3c", neighbors: ["자카르타", "마닐라", "로스앤젤레스"] }
 };
 
 const roleDetails = {
-    '운항 관리자': { color: '#b45309', desc: '✈️ 다른 플레이어의 말을 움직이거나 합류시킬 수 있습니다.' },
+    '운항 관리자': { color: '#b45309', desc: '✈️ 다른 플레이어의 말을 이동시키거나, 합류 능력으로 순간이동 시킵니다.' },
     '건축 전문가': { color: '#a855f7', desc: '🏢 연구소 건설 시 카드가 필요 없고, 연구소에서 카드 1장 버리고 어디든 갑니다.' },
     '과학자': { color: '#22c55e', desc: '🧪 같은 색상 카드 4장만으로 치료제를 개발합니다.' },
-    '위생병': { color: '#f97316', desc: '🚑 치료 시 도시의 해당 색상 모든 큐브를 제거하며, 백신 개발 시 액션 없이 치료합니다.' },
-    '연구원': { color: '#d97706', desc: '🤝 같은 도시에 있다면 조건 없이 아무 도시 카드나 동료에게 줄 수 있습니다.' },
+    '위생병': { color: '#f97316', desc: '🚑 치료 시 도시의 해당 색상 모든 큐브를 제거하며, 백신 개발 후엔 액션 없이 완치시킵니다.' },
+    '연구원': { color: '#d97706', desc: '🤝 같은 도시에 있다면 조건 없이 아무 카드나 동료에게 줄 수 있습니다.' },
     '검역 전문가': { color: '#15803d', desc: '🛡️ 현재 위치한 도시와 인접한 도시들의 감염을 완벽히 차단합니다.' }
 };
 
@@ -93,7 +138,7 @@ function initGame() {
     }
 
     gameState.playerDeck = shuffle([...basePlayerDeck, ...epidemicCards]);
-    gameState.log.unshift("🎮 인류를 위한 방역 작전을 시작합니다.");
+    gameState.log.unshift("🎮 방역 작전을 시작합니다.");
 }
 
 function checkEradication(color) {
@@ -102,7 +147,7 @@ function checkEradication(color) {
     for (let n in gameState.cities) count += gameState.cities[n].cubes[color];
     if (count === 0 && !gameState.eradicated[color]) {
         gameState.eradicated[color] = true;
-        gameState.log.unshift(`🔥 [근절 완료] ${color} 바이러스가 지구상에서 박멸되었습니다!`);
+        gameState.log.unshift(`🔥 [근절 완료] 바이러스가 지구상에서 박멸되었습니다!`);
     }
 }
 
@@ -125,7 +170,7 @@ function infectCity(cityName, diseaseColor, cubesToAdd = 1, visited = {}) {
     } else {
         city.cubes[diseaseColor] = 3;
         gameState.outbreaks++;
-        gameState.log.unshift(`⚠️ [확산] ${cityName}에서 [${diseaseColor}] 질병 연쇄 확산!! (${gameState.outbreaks}/8)`);
+        gameState.log.unshift(`⚠️ [확산] ${cityName} 연쇄 확산!! (${gameState.outbreaks}/8)`);
         if (gameState.outbreaks >= 8) gameState.gameOver = true;
         else city.neighbors.forEach(n => infectCity(n, diseaseColor, 1, visited));
     }
@@ -164,7 +209,7 @@ function finishTurnPhase() {
     gameState.actionsLeft = 4;
     gameState.isDiscardPhase = false;
     gameState.discardPlayerId = null;
-    gameState.log.unshift(`--- 작전권이 이양되었습니다. ---`);
+    gameState.log.unshift(`--- 작전권 이양 ---`);
 }
 
 io.on('connection', (socket) => {
@@ -184,11 +229,9 @@ io.on('connection', (socket) => {
                 initGame();
             } else {
                 for (let k = 0; k < 4; k++) {
-                    if (gameState.playerDeck.length > 0) {
-                        gameState.players[socket.id].cards.push(gameState.playerDeck.pop());
-                    }
+                    if (gameState.playerDeck.length > 0) gameState.players[socket.id].cards.push(gameState.playerDeck.pop());
                 }
-                gameState.log.unshift(`👥 [중도 합류] ${roleName} 요원이 뒤늦게 방역 작전에 동참하여 초기 보급품을 받았습니다.`);
+                gameState.log.unshift(`👥 [중도 합류] ${roleName} 요원이 방역 작전에 동참했습니다.`);
             }
             io.emit('update', gameState);
         }
@@ -233,29 +276,30 @@ io.on('connection', (socket) => {
         if(!p) return;
         let partner = Object.values(gameState.players).find(u => u.id !== socket.id);
 
-        // 💡 [추가 및 수정된 부분] 운항 관리자가 다른 플레이어를 조종할 수 있게 대상(mover)을 설정합니다.
-        let mover = p; 
-        if (p.role === '운항 관리자' && data.targetMoverId) {
-            mover = gameState.players[data.targetMoverId] || p;
+        // 🔥 운항 관리자 동료 조종 타겟 설정
+        let targetP = p;
+        if (p.role === '운항 관리자' && data.targetPlayerId) {
+            targetP = gameState.players[data.targetPlayerId];
         }
 
-        // 💡 [수정된 부분] 아래 이동 관련 로직에서 p.location 대신 mover.location을 사용합니다.
-        if (data.type === 'move_drive' && cityData[mover.location].neighbors.includes(data.target)) { 
-            mover.location = data.target; 
-            gameState.actionsLeft--; 
+        if (data.type === 'move_drive' && cityData[targetP.location].neighbors.includes(data.target)) { 
+            targetP.location = data.target; gameState.actionsLeft--; 
         }
         else if (data.type === 'move_direct') {
             let idx = p.cards.findIndex(c => c.name === data.target);
-            if (idx !== -1) { p.cards.splice(idx, 1); mover.location = data.target; gameState.actionsLeft--; }
-        } 
-        else if (data.type === 'move_charter') {
-            let idx = p.cards.findIndex(c => c.name === mover.location);
-            if (idx !== -1) { p.cards.splice(idx, 1); mover.location = data.target; gameState.actionsLeft--; }
-        } 
-        else if (data.type === 'move_shuttle' && gameState.cities[mover.location].hasResearchStation && gameState.cities[data.target].hasResearchStation) { 
-            mover.location = data.target; 
-            gameState.actionsLeft--; 
+            if (idx !== -1) { p.cards.splice(idx, 1); targetP.location = data.target; gameState.actionsLeft--; }
+        } else if (data.type === 'move_charter') {
+            let idx = p.cards.findIndex(c => c.name === targetP.location);
+            if (idx !== -1) { p.cards.splice(idx, 1); targetP.location = data.target; gameState.actionsLeft--; }
+        } else if (data.type === 'move_shuttle' && gameState.cities[targetP.location].hasResearchStation && gameState.cities[data.target].hasResearchStation) { 
+            targetP.location = data.target; gameState.actionsLeft--; 
         }
+        // 🔥 운항 관리자 합류 스킬
+        else if (data.type === 'move_gather' && p.role === '운항 관리자') {
+            targetP.location = data.target; gameState.actionsLeft--;
+            gameState.log.unshift(`✈️ [운항 관리자] 합류 능력으로 요원을 워프시켰습니다.`);
+        }
+        
         else if (data.type === 'build') {
             if (p.role === '건축 전문가' || p.cards.some(c => c.name === p.location)) {
                 if (p.role !== '건축 전문가') p.cards.splice(p.cards.findIndex(c => c.name === p.location), 1);
@@ -271,7 +315,7 @@ io.on('connection', (socket) => {
                 
                 if (!(p.role === '위생병' && gameState.cures[targetColor])) gameState.actionsLeft--;
                 checkEradication(targetColor);
-                gameState.log.unshift(`💊 [치료] ${p.role}이(가) ${p.location}에서 질병을 치료했습니다.`);
+                gameState.log.unshift(`💊 [치료] ${p.location}에서 질병을 치료했습니다.`);
             }
         } 
         else if (data.type === 'share_give' && partner && partner.location === p.location) {
@@ -281,7 +325,7 @@ io.on('connection', (socket) => {
                 if (p.role === '연구원' || cardName === p.location) {
                     partner.cards.push(p.cards.splice(idx, 1)[0]);
                     gameState.actionsLeft--;
-                    gameState.log.unshift(`🤝 [지식 공유] ${p.role}이(가) ${partner.role}에게 [${cardName}] 카드를 넘겨주었습니다.`);
+                    gameState.log.unshift(`🤝 [지식 공유] ${cardName} 카드를 넘겨주었습니다.`);
                 }
             }
         } 
@@ -293,6 +337,7 @@ io.on('connection', (socket) => {
                 if (counts[col] >= need) {
                     gameState.cures[col] = true; p.cards = p.cards.filter(c => c.color !== col || c.type !== 'city');
                     gameState.actionsLeft--; checkEradication(col);
+                    gameState.log.unshift(`🧪 [백신 개발] ${col} 치료제가 개발되었습니다!`);
                     if (Object.values(gameState.cures).every(v => v)) gameState.gameWin = true;
                     break;
                 }
