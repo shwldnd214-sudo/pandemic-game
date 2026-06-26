@@ -1,14 +1,12 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-// 🔥 외부 접속(localtunnel 등) 오류를 해결하는 핵심 설정 (CORS)
 const io = require('socket.io')(http, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 app.use(express.static('public'));
 
-// 맵 데이터와 직업, 카드 가이드 (이전과 동일)
 const cityData = {
     "샌프란시스코": { color: "#3498db", neighbors: ["시카고", "로스앤젤레스", "도쿄", "마닐라"] }, "시카고": { color: "#3498db", neighbors: ["샌프란시스코", "몬트리올", "애틀랜타", "멕시코시티"] }, "몬트리올": { color: "#3498db", neighbors: ["시카고", "뉴욕", "워싱턴"] }, "뉴욕": { color: "#3498db", neighbors: ["몬트리올", "워싱턴", "런던", "마드리드"] }, "애틀랜타": { color: "#3498db", neighbors: ["시카고", "워싱턴", "마이매미"] }, "워싱턴": { color: "#3498db", neighbors: ["몬트리올", "뉴욕", "애틀랜타", "마이매미"] }, "런던": { color: "#3498db", neighbors: ["뉴욕", "마드리드", "파리", "에센"] }, "에센": { color: "#3498db", neighbors: ["런던", "파리", "밀라노", "상트페테르부르크"] }, "상트페테르부르크": { color: "#3498db", neighbors: ["에센", "모스크바", "이스탄불"] }, "마드리드": { color: "#3498db", neighbors: ["뉴욕", "런던", "파리", "알제", "상파울루"] }, "파리": { color: "#3498db", neighbors: ["런던", "마드리드", "밀라노", "에센", "알제"] }, "밀라노": { color: "#3498db", neighbors: ["파리", "에센", "이스탄불"] },
     "로스앤젤레스": { color: "#f1c40f", neighbors: ["샌프란시스코", "시카고", "멕시코시티", "시드니"] }, "멕시코시티": { color: "#f1c40f", neighbors: ["시카고", "로스앤젤레스", "마이매미", "보고타"] }, "마이매미": { color: "#f1c40f", neighbors: ["애틀랜타", "워싱턴", "멕시코시티", "보고타"] }, "보고타": { color: "#f1c40f", neighbors: ["멕시코시티", "마이매미", "리마", "상파울루"] }, "리마": { color: "#f1c40f", neighbors: ["보고타", "산티아고"] }, "산티아고": { color: "#f1c40f", neighbors: ["리마"] }, "부에노스아이레스": { color: "#f1c40f", neighbors: ["산티아고", "상파울루"] }, "상파울루": { color: "#f1c40f", neighbors: ["보고타", "부에노스아이레스", "마드리드", "라고스"] }, "라고스": { color: "#f1c40f", neighbors: ["상파울루", "킨샤샤", "카르툼"] }, "킨샤샤": { color: "#f1c40f", neighbors: ["라고스", "요하네스버그", "카르툼"] }, "카르툼": { color: "#f1c40f", neighbors: ["라고스", "킨샤샤", "요하네스버그", "카이로"] }, "요하네스버그": { color: "#f1c40f", neighbors: ["킨샤샤", "카르툼"] },
@@ -20,8 +18,8 @@ const roleDetails = {
     '운항 관리자': { color: '#b45309', desc: '✈️ 다른 플레이어의 말을 움직이거나 합류시킬 수 있습니다.' },
     '건축 전문가': { color: '#a855f7', desc: '🏢 연구소 건설 시 카드가 필요 없고, 연구소에서 카드 1장 버리고 어디든 갑니다.' },
     '과학자': { color: '#22c55e', desc: '🧪 같은 색상 카드 4장만으로 치료제를 개발합니다.' },
-    '위생병': { color: '#f97316', desc: '🚑 치료 시 도시의 모든 큐브를 제거하며, 백신 개발 시 액션 없이 치료합니다.' },
-    '연구원': { color: '#d97706', desc: '🤝 같은 도시에 있다면 아무 도시 카드나 줄 수 있습니다.' },
+    '위생병': { color: '#f97316', desc: '🚑 치료 시 도시의 해당 색상 모든 큐브를 제거하며, 백신 개발 시 액션 없이 치료합니다.' },
+    '연구원': { color: '#d97706', desc: '🤝 같은 도시에 있다면 조건 없이 아무 도시 카드나 동료에게 줄 수 있습니다.' },
     '검역 전문가': { color: '#15803d', desc: '🛡️ 현재 위치한 도시와 인접한 도시들의 감염을 완벽히 차단합니다.' }
 };
 
@@ -35,7 +33,6 @@ const chanceCardGuides = {
 
 const infectionRateTrack = [2, 2, 3, 3, 4, 4];
 
-// 🔥 리셋을 위한 초기 상태 팩토리 함수
 function getInitialGameState() {
     return {
         gameStarted: false, outbreaks: 0, infectionRateIndex: 0, infectionRate: 2, actionsLeft: 4, currentTurnPlayer: null,
@@ -72,13 +69,21 @@ function initGame() {
     gameState.outbreaks = 0;
 
     for (let name in cityData) {
-        gameState.cities[name] = { color: cityData[name].color, neighbors: cityData[name].neighbors, cubes: 0, hasResearchStation: (name === "애틀랜타") };
+        gameState.cities[name] = { 
+            color: cityData[name].color, 
+            neighbors: cityData[name].neighbors, 
+            // 🔥 각 색상별 질병 개수를 독립적으로 관리하도록 변경
+            cubes: { "#3498db": 0, "#f1c40f": 0, "#7f8c8d": 0, "#e74c3c": 0 }, 
+            hasResearchStation: (name === "애틀랜타") 
+        };
     }
 
+    // 초기 감염 세팅 (각 도시 고유의 색상 질병이 생김)
     for (let i = 3; i >= 1; i--) {
         for (let j = 0; j < 3; j++) {
             let c = gameState.infectionDeck.pop();
-            gameState.cities[c].cubes = i;
+            let nativeColor = cityData[c].color;
+            gameState.cities[c].cubes[nativeColor] = i;
             gameState.infectionDiscard.push(c);
         }
     }
@@ -96,18 +101,19 @@ function initGame() {
 function checkEradication(color) {
     if (!gameState.cures[color]) return;
     let count = 0;
-    for (let n in gameState.cities) if (gameState.cities[n].color === color) count += gameState.cities[n].cubes;
+    for (let n in gameState.cities) count += gameState.cities[n].cubes[color];
     if (count === 0 && !gameState.eradicated[color]) {
         gameState.eradicated[color] = true;
-        gameState.log.unshift(`🔥 [근절 완료] ${color} 바이러스가 박멸되었습니다!`);
+        gameState.log.unshift(`🔥 [근절 완료] ${color} 바이러스가 지구상에서 박멸되었습니다!`);
     }
 }
 
-function infectCity(cityName, cubesToAdd = 1, visited = {}) {
+// 🔥 질병 색상을 인자로 받아 어떤 색상이든 중복 누적 및 확산이 가능하도록 변경
+function infectCity(cityName, diseaseColor, cubesToAdd = 1, visited = {}) {
     if (visited[cityName]) return;
     visited[cityName] = true;
     let city = gameState.cities[cityName];
-    if (gameState.eradicated[city.color]) return;
+    if (gameState.eradicated[diseaseColor]) return;
 
     for (let pId in gameState.players) {
         let q = gameState.players[pId];
@@ -117,13 +123,15 @@ function infectCity(cityName, cubesToAdd = 1, visited = {}) {
         }
     }
 
-    if (city.cubes + cubesToAdd <= 3) city.cubes += cubesToAdd;
-    else {
-        city.cubes = 3;
+    if (city.cubes[diseaseColor] + cubesToAdd <= 3) {
+        city.cubes[diseaseColor] += cubesToAdd;
+    } else {
+        city.cubes[diseaseColor] = 3;
         gameState.outbreaks++;
-        gameState.log.unshift(`⚠️ ${cityName} 연쇄 확산!! (${gameState.outbreaks}/8)`);
+        gameState.log.unshift(`⚠️ [확산] ${cityName}에서 [${diseaseColor}] 질병 연쇄 확산!! (${gameState.outbreaks}/8)`);
         if (gameState.outbreaks >= 8) gameState.gameOver = true;
-        else city.neighbors.forEach(n => infectCity(n, 1, visited));
+        // 확산될 때는 원래 퍼지던 질병 색상(diseaseColor) 그대로 이웃에 전파됨!
+        else city.neighbors.forEach(n => infectCity(n, diseaseColor, 1, visited));
     }
 }
 
@@ -133,7 +141,7 @@ function triggerEpidemic() {
     if (gameState.infectionDeck.length > 0) {
         let bottom = gameState.infectionDeck.shift();
         gameState.infectionDiscard.push(bottom);
-        infectCity(bottom, 3);
+        infectCity(bottom, cityData[bottom].color, 3);
     }
     gameState.infectionDeck = [...gameState.infectionDeck, ...shuffle([...gameState.infectionDiscard])];
     gameState.infectionDiscard = [];
@@ -151,7 +159,7 @@ function finishTurnPhase() {
             }
             let target = gameState.infectionDeck.pop();
             gameState.infectionDiscard.push(target);
-            infectCity(target, 1);
+            infectCity(target, cityData[target].color, 1);
         }
     }
     const ids = Object.keys(gameState.players);
@@ -166,17 +174,27 @@ function finishTurnPhase() {
 io.on('connection', (socket) => {
     socket.emit('setupData', { roleDetails, chanceCardGuides });
 
-    // 🔥 리셋 이벤트 수신
     socket.on('resetGame', () => {
-        gameState = getInitialGameState(); // 서버 데이터를 깡통으로 만듦
-        io.emit('forceReload'); // 접속 중인 모든 플레이어 화면을 강제 새로고침
+        gameState = getInitialGameState();
+        io.emit('forceReload');
     });
 
     socket.on('selectRole', (roleName) => {
         if (!gameState.players[socket.id]) {
             gameState.players[socket.id] = { id: socket.id, role: roleName, roleColor: roleDetails[roleName].color, location: "애틀랜타", cards: [] };
             if (!gameState.currentTurnPlayer) gameState.currentTurnPlayer = socket.id;
-            initGame();
+            
+            // 🔥 수정: 이미 게임이 시작된 후 방에 들어온 늦둥이 친구에게도 카드 4장 지급!
+            if (!gameState.gameStarted) {
+                initGame();
+            } else {
+                for (let k = 0; k < 4; k++) {
+                    if (gameState.playerDeck.length > 0) {
+                        gameState.players[socket.id].cards.push(gameState.playerDeck.pop());
+                    }
+                }
+                gameState.log.unshift(`👥 [중도 합류] ${roleName} 요원이 뒤늦게 방역 작전에 동참하여 초기 보급품을 받았습니다.`);
+            }
             io.emit('update', gameState);
         }
     });
@@ -233,17 +251,34 @@ io.on('connection', (socket) => {
                 if (p.role !== '건축 전문가') p.cards.splice(p.cards.findIndex(c => c.name === p.location), 1);
                 gameState.cities[p.location].hasResearchStation = true; gameState.actionsLeft--;
             }
-        } else if (data.type === 'treat') {
+        } 
+        // 🔥 수정: 선택한 색상의 질병 큐브를 명확하게 제거하도록 고침
+        else if (data.type === 'treat') {
             let c = gameState.cities[p.location];
-            if (c.cubes > 0) {
-                if (p.role === '위생병' || gameState.cures[c.color]) c.cubes = 0; else c.cubes--;
-                if (!(p.role === '위생병' && gameState.cures[c.color])) gameState.actionsLeft--;
-                checkEradication(c.color);
+            let targetColor = data.color;
+            if (c.cubes[targetColor] > 0) {
+                if (p.role === '위생병' || gameState.cures[targetColor]) c.cubes[targetColor] = 0; 
+                else c.cubes[targetColor]--;
+                
+                if (!(p.role === '위생병' && gameState.cures[targetColor])) gameState.actionsLeft--;
+                checkEradication(targetColor);
+                gameState.log.unshift(`💊 [치료] ${p.role}이(가) ${p.location}에서 질병을 치료했습니다.`);
             }
-        } else if (data.type === 'share_give' && partner && partner.location === p.location) {
-            let idx = (p.role === '연구원') ? 0 : p.cards.findIndex(c => c.name === p.location);
-            if (idx !== -1 && p.cards.length > 0) { partner.cards.push(p.cards.splice(idx, 1)[0]); gameState.actionsLeft--; }
-        } else if (data.type === 'discoverCure' && gameState.cities[p.location].hasResearchStation) {
+        } 
+        // 🔥 수정: 내가 원하는 카드를 명확하게 선택해서 줄 수 있도록 변경
+        else if (data.type === 'share_give' && partner && partner.location === p.location) {
+            let cardName = data.cardName;
+            let idx = p.cards.findIndex(c => c.name === cardName);
+            if (idx !== -1) {
+                // 연구원은 아무 카드나, 다른 직업은 현재 위치 도시 카드만 가능하도록 제한 검사
+                if (p.role === '연구원' || cardName === p.location) {
+                    partner.cards.push(p.cards.splice(idx, 1)[0]);
+                    gameState.actionsLeft--;
+                    gameState.log.unshift(`🤝 [지식 공유] ${p.role}이(가) ${partner.role}에게 [${cardName}] 카드를 넘겨주었습니다.`);
+                }
+            }
+        } 
+        else if (data.type === 'discoverCure' && gameState.cities[p.location].hasResearchStation) {
             const need = (p.role === '과학자') ? 4 : 5;
             let counts = {};
             p.cards.forEach(c => { if(c.type==='city') counts[c.color] = (counts[c.color] || 0) + 1; });
@@ -271,4 +306,5 @@ io.on('connection', (socket) => {
     });
 });
 
-http.listen(3050, () => console.log('작전 서버 가동: http://localhost:3050'));
+const PORT = process.env.PORT || 3050;
+http.listen(PORT, () => console.log(`작전 서버 가동: ${PORT}`));

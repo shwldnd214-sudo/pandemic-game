@@ -10,7 +10,6 @@ const cityPositions = {
 let localState = null;
 let targetCity = null;
 
-// 🔥 서버에서 리셋 신호가 오면 브라우저 강제 새로고침
 socket.on('forceReload', () => {
     location.reload();
 });
@@ -85,17 +84,24 @@ function render() {
         if(localState.eradicated[c.color]) node.style.borderColor = "red";
         else if(localState.cures[c.color]) node.style.borderColor = "#10b981";
 
-        node.innerHTML = `<div class="city-label" style="color:${c.color}">${name}${c.hasResearchStation?'🏢':''}</div>`;
+        let labelHtml = `<div class="city-label" style="color:${c.color}">${name}${c.hasResearchStation?'🏢':''}</div>`;
+        
+        // 🔥 수정: 여러 색상의 질병 배지가 중복 표시될 수 있도록 나란히 렌더링
+        let cubeHtml = '';
+        let offset = 0;
+        for(let col in c.cubes) {
+            if(c.cubes[col] > 0) {
+                cubeHtml += `<div class="cube-indicator" style="background:${col}; top:-6px; right:${-10 + offset}px;">${c.cubes[col]}</div>`;
+                offset += 16; 
+            }
+        }
+        node.innerHTML = labelHtml + cubeHtml;
         
         let pawns = Object.values(localState.players).filter(p => p.location === name);
         if(pawns.length > 0) {
             const occ = document.createElement('div'); occ.className = 'city-occupants';
             occ.innerHTML = pawns.map(p => `<span class="player-pawn" style="background:${p.roleColor}">${p.role[0]}${p.role[1]}</span>`).join('');
             node.appendChild(occ);
-        }
-        if(c.cubes > 0) {
-            const ind = document.createElement('div'); ind.className = 'cube-indicator'; ind.innerText = c.cubes;
-            node.appendChild(ind);
         }
         node.onclick = () => { if(localState.currentTurnPlayer === socket.id) openModal(name); };
         board.appendChild(node);
@@ -117,10 +123,9 @@ function render() {
 
     document.getElementById('log-area').innerHTML = localState.log.map(l => `<div style="margin-bottom:3px;">${l}</div>`).join('');
     
-    // 🔥 게임 오버 또는 승리 시 다 같이 리셋되도록 수정
     if(localState.gameOver && !window.hasAlertedGameEnd){ 
         window.hasAlertedGameEnd = true;
-        alert("❌ 확산 8회 도달로 방역 작전에 실패했습니다...\n확인을 누르면 모두 초기화됩니다."); 
+        alert("❌ 확산 8회 도달 또는 덱 고갈로 방역 작전에 실패했습니다...\n확인을 누르면 모두 초기화됩니다."); 
         socket.emit('resetGame');
     }
     if(localState.gameWin && !window.hasAlertedGameEnd){ 
@@ -133,14 +138,51 @@ function render() {
 function openModal(name) { targetCity = name; document.getElementById('modal-city-name').innerText = name; document.getElementById('action-modal').style.display='block'; }
 function closeModal() { document.getElementById('action-modal').style.display='none'; }
 function sendAction(type) { socket.emit('playerAction', {type, target: targetCity}); closeModal(); }
-function treat() { socket.emit('playerAction', {type:'treat'}); }
+
+// 🔥 수정: 여러 색상이 섞여 있을 때 어떤 색을 치료할지 골라 요청하는 로직
+function treat() { 
+    const my = localState.players[socket.id];
+    const city = localState.cities[my.location];
+    
+    let activeColors = [];
+    for(let col in city.cubes) { if(city.cubes[col] > 0) activeColors.push(col); }
+    
+    if(activeColors.length === 0) { alert("이 도시에는 치료할 질병이 없습니다."); return; }
+    
+    let selectedColor = activeColors[0];
+    if(activeColors.length > 1) {
+        let nameMap = {"#3498db":"1. 파랑", "#f1c40f":"2. 노랑", "#7f8c8d":"3. 회색", "#e74c3c":"4. 빨강"};
+        let menu = activeColors.map(c => nameMap[c]).join('\n');
+        let choice = prompt(`치료할 질병 번호를 선택하세요:\n${menu}`, "1");
+        if(choice) {
+            let matched = activeColors.find(c => nameMap[c].startsWith(choice));
+            if(matched) selectedColor = matched;
+        }
+    }
+    socket.emit('playerAction', {type:'treat', color: selectedColor}); 
+}
+
 function build() { socket.emit('playerAction', {type:'build'}); }
 function cure() { socket.emit('playerAction', {type:'discoverCure'}); }
+
+// 🔥 수정: 어떤 카드를 넘겨줄지 직접 이름으로 적어 주는 지식 공유 로직
 function share() { 
+    const my = localState.players[socket.id];
     const partner = Object.values(localState.players).find(p => p.id !== socket.id);
-    if(partner && partner.location === localState.players[socket.id].location) socket.emit('playerAction', {type:'share_give'});
-    else alert("지식을 공유할 동료가 같은 도시에 없습니다.");
+    if(partner && partner.location === my.location) {
+        if(my.cards.length === 0) { alert("넘겨줄 수 있는 카드가 손패에 없습니다."); return; }
+        
+        let cardList = my.cards.map(c => c.name).join(', ');
+        let cardName = prompt(`동료에게 넘겨줄 도시 카드 이름을 정확히 입력하세요.\n(현재 내 손패: ${cardList})\n*주의: 연구원이 아니면 현재 있는 도시의 카드만 줄 수 있습니다.`);
+        
+        if(cardName) {
+            socket.emit('playerAction', {type:'share_give', cardName: cardName.trim()});
+        }
+    } else {
+        alert("지식을 공유할 동료가 같은 도시에 없습니다.");
+    }
 }
+
 function useEvent(name) {
     let targetPlayerId = null;
     if(name === "정부 보조금") targetCity = prompt("연구소를 지을 도시 이름을 정확히 입력하세요:");
