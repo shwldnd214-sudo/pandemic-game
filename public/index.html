@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>팬데믹 작전실</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Malgun Gothic', sans-serif; }
+        body { background: #0f172a; color: #f8fafc; display: flex; height: 100vh; overflow: hidden; }
+        #game-container { flex: 1; position: relative; background: #1e293b; overflow: auto; }
+        #board { position: relative; width: 1100px; height: 720px; margin: 20px auto; background: #0b0f19; border-radius: 16px; border: 2px solid #334155; }
+        #map-canvas { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
+        .city-node { position: absolute; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; z-index: 5; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; }
+        .city-label { position: absolute; top: -22px; white-space: nowrap; font-size: 12px; font-weight: 900; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; pointer-events: none; }
+        .city-occupants { position: absolute; bottom: -24px; white-space: nowrap; display: flex; gap: 4px; }
+        .player-pawn { padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 1px 1px 1px #000; border: 1px solid #fff; }
+        .cube-indicator { position: absolute; top: -6px; right: -10px; background: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 1.5px solid #fff; z-index: 6; }
+        
+        #dashboard { width: 340px; background: #0f172a; border-left: 2px solid #1e293b; padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        .status-panel { background: #1e293b; padding: 10px; border-radius: 8px; border: 1px solid #334155; font-size: 13px; }
+        .vaccine-badge { flex: 1; text-align: center; font-size: 11px; padding: 4px 0; border-radius: 4px; color: #000; font-weight: bold; }
+        .btn-action { width: 100%; padding: 10px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
+        #card-section { background: #111827; padding: 8px; border-radius: 6px; border: 1px solid #1e293b; margin-top: 10px; }
+        #log-area { flex: 1; background: #020617; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; font-family: monospace; font-size: 11px; color: #34d399; overflow-y: auto; line-height: 1.4; }
+        
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; border: 2px solid #475569; border-radius: 10px; padding: 20px; z-index: 1000; width: 320px; box-shadow: 0 20px 25px rgba(0,0,0,0.7); }
+        #guide-modal { width: 450px; max-height: 80vh; overflow-y: auto; }
+        
+        #role-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .role-btn { background: #1e293b; border: 2px solid #334155; padding: 15px; margin: 10px; border-radius: 8px; cursor: pointer; color: white; width: 250px; text-align: left; transition: 0.2s; }
+        .role-btn:hover { background: #334155; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="board"><canvas id="map-canvas" width="1100" height="720"></canvas></div>
+    </div>
+    
+    <div id="dashboard">
+        <h2>☣️ 팬데믹 관제소</h2>
+        <div class="status-panel">
+            <div>내 보직: <strong id="txt-role">대기 중</strong></div>
+            <div>행동력: <strong id="txt-actions">4</strong> / 4</div>
+            <div>확산 지수: <strong id="txt-outbreak">0</strong> / 8</div>
+            <div style="display:flex; gap:4px; margin-top:8px;">
+                <div id="v-blue" class="vaccine-badge" style="background:#3498db; opacity:0.3;">파랑</div>
+                <div id="v-yellow" class="vaccine-badge" style="background:#f1c40f; opacity:0.3;">노랑</div>
+                <div id="v-gray" class="vaccine-badge" style="background:#7f8c8d; opacity:0.3;">회색</div>
+                <div id="v-red" class="vaccine-badge" style="background:#e74c3c; opacity:0.3;">빨강</div>
+            </div>
+            <div id="turn-alert" style="margin-top:10px; color:#fbbf24; font-weight:bold;"></div>
+        </div>
+        
+        <button class="btn-action" style="background:#dc2626;" onclick="treat()">💊 질병 치료</button>
+        <button class="btn-action" style="background:#2563eb;" onclick="build()">🏢 연구소 건설</button>
+        <button class="btn-action" style="background:#059669;" onclick="cure()">🧪 백신 연구</button>
+        <button class="btn-action" style="background:#7c3aed;" onclick="share()">🤝 지식 공유</button>
+        <button class="btn-action" style="background:#f59e0b; color:#000;" onclick="openGuideModal()">📖 직업 및 이벤트 가이드 북</button>
+        
+        <button class="btn-action" style="background:#7f1d1d; border: 1px solid #fca5a5; margin-top:10px;" onclick="if(confirm('게임을 포기하고 완전히 새로 고치시겠습니까? (모든 플레이어 적용)')) socket.emit('resetGame')">🔄 게임 리셋 (처음부터)</button>
+        
+        <div id="card-section"></div>
+        <h3>📋 실시간 로그</h3>
+        <div id="log-area"></div>
+    </div>
+
+    <div id="role-overlay">
+        <h2 style="margin-bottom:20px;">🎭 보직을 선택하세요</h2>
+        <div id="role-container" style="display:flex; flex-wrap:wrap; justify-content:center; max-width: 900px;"></div>
+    </div>
+
+    <div id="action-modal" class="modal">
+        <h3 id="modal-city-name" style="margin-bottom:15px; text-align:center;">도시</h3>
+        <button class="btn-action" style="background:#475569;" onclick="sendAction('move_drive')">🚗 차량/연락선 이동</button>
+        <button class="btn-action" style="background:#475569;" onclick="sendAction('move_direct')">✈️ 직항 비행</button>
+        <button class="btn-action" style="background:#475569;" onclick="sendAction('move_charter')">🗺️ 전역 노선</button>
+        <button class="btn-action" style="background:#475569;" onclick="sendAction('move_shuttle')">🚀 셔틀 비행</button>
+        <button class="btn-action" style="background:#ef4444;" onclick="closeModal()">닫기</button>
+    </div>
+
+    <div id="guide-modal" class="modal">
+        <h2 style="text-align:center; color:#fbbf24; border-bottom:1px solid #475569; padding-bottom:10px; margin-bottom:15px;">📖 게임 가이드 북</h2>
+        <h3 style="color:#60a5fa; margin-bottom:10px;">👤 직업 능력</h3>
+        <div id="guide-roles" style="font-size:12px; margin-bottom:20px; line-height:1.5;"></div>
+        <h3 style="color:#a855f7; margin-bottom:10px;">⚡ 이벤트 카드 효과</h3>
+        <div id="guide-events" style="font-size:12px; margin-bottom:20px; line-height:1.5;"></div>
+        <button class="btn-action" style="background:#ef4444;" onclick="document.getElementById('guide-modal').style.display='none'">닫기</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/client.js"></script>
+</body>
+</html>
