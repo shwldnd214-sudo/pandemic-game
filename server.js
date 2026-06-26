@@ -7,14 +7,13 @@ const io = require('socket.io')(http, {
 
 app.use(express.static('public'));
 
-// 🔥 6. 도쿄-오사카 연결 버그 수정
 const cityData = {
     "샌프란시스코": { color: "#3498db", neighbors: ["시카고", "로스앤젤레스", "도쿄", "마닐라"] }, 
     "시카고": { color: "#3498db", neighbors: ["샌프란시스코", "로스앤젤레스", "몬트리올", "애틀랜타", "멕시코시티"] }, 
     "몬트리올": { color: "#3498db", neighbors: ["시카고", "뉴욕", "워싱턴"] }, 
     "뉴욕": { color: "#3498db", neighbors: ["몬트리올", "워싱턴", "런던", "마드리드"] }, 
-    "애틀랜타": { color: "#3498db", neighbors: ["시카고", "워싱턴", "마이매미"] }, 
-    "워싱턴": { color: "#3498db", neighbors: ["몬트리올", "뉴욕", "애틀랜타", "마이매미"] }, 
+    "애틀랜타": { color: "#3498db", neighbors: ["시카고", "워싱턴", "마이애미"] }, 
+    "워싱턴": { color: "#3498db", neighbors: ["몬트리올", "뉴욕", "애틀랜타", "마이애미"] }, 
     "런던": { color: "#3498db", neighbors: ["뉴욕", "마드리드", "파리", "에센"] }, 
     "에센": { color: "#3498db", neighbors: ["런던", "파리", "밀라노", "상트페테르부르크"] }, 
     "상트페테르부르크": { color: "#3498db", neighbors: ["에센", "모스크바", "이스탄불"] }, 
@@ -22,9 +21,9 @@ const cityData = {
     "파리": { color: "#3498db", neighbors: ["런던", "마드리드", "밀라노", "에센", "알제"] }, 
     "밀라노": { color: "#3498db", neighbors: ["파리", "에센", "이스탄불"] },
     "로스앤젤레스": { color: "#f1c40f", neighbors: ["샌프란시스코", "시카고", "멕시코시티", "시드니"] }, 
-    "멕시코시티": { color: "#f1c40f", neighbors: ["시카고", "로스앤젤레스", "마이매미", "보고타"] }, 
-    "마이매미": { color: "#f1c40f", neighbors: ["애틀랜타", "워싱턴", "멕시코시티", "보고타"] }, 
-    "보고타": { color: "#f1c40f", neighbors: ["멕시코시티", "마이매미", "리마", "상파울루"] }, 
+    "멕시코시티": { color: "#f1c40f", neighbors: ["시카고", "로스앤젤레스", "마이애미", "보고타"] }, 
+    "마이애미": { color: "#f1c40f", neighbors: ["애틀랜타", "워싱턴", "멕시코시티", "보고타"] }, 
+    "보고타": { color: "#f1c40f", neighbors: ["멕시코시티", "마이애미", "리마", "상파울루"] }, 
     "리마": { color: "#f1c40f", neighbors: ["보고타", "산티아고"] }, 
     "산티아고": { color: "#f1c40f", neighbors: ["리마"] }, 
     "부에노스아이레스": { color: "#f1c40f", neighbors: ["산티아고", "상파울루"] }, 
@@ -68,7 +67,6 @@ const roleDetails = {
     '검역 전문가': { color: '#15803d', desc: '🛡️ 현재 위치한 도시와 인접한 도시들의 감염을 완벽히 차단합니다.' }
 };
 
-// 🔥 8. 예측 카드 삭제 및 설명서 업데이트
 const chanceCardGuides = {
     "정부 보조금": "아무 도시에나 연구소 하나를 즉시 건설합니다.",
     "긴급 공중 수송": "본인이나 동료의 말을 원하는 도시로 즉시 이동시킵니다.",
@@ -105,7 +103,6 @@ function initGame() {
     let cityNames = Object.keys(cityData);
     let cityCards = cityNames.map(name => ({ name, color: cityData[name].color, type: 'city' }));
     
-    // 🔥 8. 4개 이벤트 중 하나를 랜덤 복제하여 5장 유지
     const chanceKeys = Object.keys(chanceCardGuides);
     let eventCards = chanceKeys.map(name => ({ name, color: "#9333ea", type: "chance" }));
     let randomDuplicate = chanceKeys[Math.floor(Math.random() * chanceKeys.length)];
@@ -121,7 +118,6 @@ function initGame() {
         gameState.cities[name] = { color: cityData[name].color, neighbors: cityData[name].neighbors, cubes: { "#3498db": 0, "#f1c40f": 0, "#7f8c8d": 0, "#e74c3c": 0 }, hasResearchStation: (name === "애틀랜타") };
     }
 
-    // 초기 감염
     for (let i = 3; i >= 1; i--) {
         for (let j = 0; j < 3; j++) {
             let c = gameState.infectionDeck.pop();
@@ -137,18 +133,17 @@ function initGame() {
         for (let k = 0; k < 4; k++) gameState.players[pId].cards.push(basePlayerDeck.pop());
     }
 
-    // 🔥 9. 전염 카드 분할 분배 (4개 더미)
     let chunks = [[], [], [], []];
     for (let i = 0; i < basePlayerDeck.length; i++) {
         chunks[i % 4].push(basePlayerDeck[i]);
     }
     
     gameState.playerDeck = [];
-    // 역순(3,2,1,0)으로 넣어야 0번 더미가 팝(pop)될 때 덱의 맨 위가 됨
     for (let i = 3; i >= 0; i--) {
-        let chunk = chunks[i];
-        chunk.push({ name: "⚠️ 전염 발생", type: "epidemic" });
-        gameState.playerDeck.push(...shuffle(chunk));
+        let chunk = shuffle(chunks[i]);
+        let insertPos = Math.floor(Math.random() * (chunk.length / 2)); 
+        chunk.splice(insertPos, 0, { name: "⚠️ 전염 발생", type: "epidemic" });
+        gameState.playerDeck.push(...chunk);
     }
 
     gameState.log.unshift("🎮 방역 작전을 시작합니다.");
@@ -184,8 +179,6 @@ function infectCity(cityName, diseaseColor, cubesToAdd = 1, visited = {}) {
         city.cubes[diseaseColor] = 3;
         gameState.outbreaks++;
         gameState.log.unshift(`⚠️ [확산] ${cityName} 연쇄 확산!! (${gameState.outbreaks}/8)`);
-        
-        // 🔥 2. 연쇄 확산 소켓 이벤트 전송
         io.emit('outbreakAlert', cityName);
         
         if (gameState.outbreaks >= 8) gameState.gameOver = true;
@@ -197,15 +190,11 @@ function triggerEpidemic() {
     gameState.log.unshift(`🚨🚨🚨 [전염 발생]`);
     if (gameState.infectionRateIndex < infectionRateTrack.length - 1) gameState.infectionRate = infectionRateTrack[++gameState.infectionRateIndex];
     if (gameState.infectionDeck.length > 0) {
-        // 감염 덱 맨 밑에서 카드 뽑기
         let bottom = gameState.infectionDeck.shift(); 
         gameState.infectionDiscard.push(bottom);
         infectCity(bottom, cityData[bottom].color, 3);
-        
-        // 🔥 1. 전염 팝업용 소켓 이벤트 전송
         io.emit('epidemicAlert', bottom);
     }
-    // 감염 심화 (버린 카드 섞어서 위로)
     gameState.infectionDeck = [...gameState.infectionDeck, ...shuffle([...gameState.infectionDiscard])];
     gameState.infectionDiscard = [];
 }
@@ -225,6 +214,8 @@ function finishTurnPhase() {
             infectCity(target, cityData[target].color, 1);
         }
     }
+    
+    // 턴 변경 로직
     const ids = Object.keys(gameState.players);
     let idx = ids.indexOf(gameState.currentTurnPlayer);
     gameState.currentTurnPlayer = ids[(idx + 1) % ids.length];
@@ -232,6 +223,12 @@ function finishTurnPhase() {
     gameState.isDiscardPhase = false;
     gameState.discardPlayerId = null;
     gameState.log.unshift(`--- 작전권 이양 ---`);
+
+    // 🔥 턴 변경 알림 쏘기
+    io.emit('turnChangeAlert', { 
+        id: gameState.currentTurnPlayer, 
+        role: gameState.players[gameState.currentTurnPlayer].role 
+    });
 }
 
 io.on('connection', (socket) => {
@@ -273,9 +270,15 @@ io.on('connection', (socket) => {
         if (idx === -1) return;
         let card = p.cards.splice(idx, 1)[0];
 
-        if (card.name === "정부 보조금") gameState.cities[data.targetCity].hasResearchStation = true;
-        else if (card.name === "긴급 공중 수송") gameState.players[data.targetPlayerId || socket.id].location = data.targetCity;
-        else if (card.name === "평온한 하룻밤") gameState.quietNightActive = true;
+        if (card.name === "정부 보조금") {
+            if(cityData[data.targetCity]) gameState.cities[data.targetCity].hasResearchStation = true;
+        }
+        else if (card.name === "긴급 공중 수송") {
+            if(cityData[data.targetCity]) gameState.players[data.targetPlayerId || socket.id].location = data.targetCity;
+        }
+        else if (card.name === "평온한 하룻밤") {
+            gameState.quietNightActive = true;
+        }
         else if (card.name === "항체 보유자") {
             let i = gameState.infectionDiscard.indexOf(data.targetCity);
             if (i !== -1) gameState.infectionDiscard.splice(i, 1);
@@ -292,40 +295,51 @@ io.on('connection', (socket) => {
 
         let targetP = p;
         if (p.role === '운항 관리자' && data.targetPlayerId) {
-            targetP = gameState.players[data.targetPlayerId];
+            targetP = gameState.players[data.targetPlayerId] || p;
         }
 
-        if (data.type === 'move_drive' && cityData[targetP.location].neighbors.includes(data.target)) { 
-            targetP.location = data.target; gameState.actionsLeft--; 
+        let actionTaken = false;
+
+        if (data.type === 'move_drive') {
+            if (cityData[targetP.location].neighbors.includes(data.target)) { 
+                targetP.location = data.target; gameState.actionsLeft--; actionTaken = true; 
+            }
         }
         else if (data.type === 'move_direct') {
             let idx = p.cards.findIndex(c => c.name === data.target);
-            if (idx !== -1) { p.cards.splice(idx, 1); targetP.location = data.target; gameState.actionsLeft--; }
+            if (idx !== -1) { p.cards.splice(idx, 1); targetP.location = data.target; gameState.actionsLeft--; actionTaken = true; }
         } else if (data.type === 'move_charter') {
             let idx = p.cards.findIndex(c => c.name === targetP.location);
-            if (idx !== -1) { p.cards.splice(idx, 1); targetP.location = data.target; gameState.actionsLeft--; }
-        } else if (data.type === 'move_shuttle' && gameState.cities[targetP.location].hasResearchStation && gameState.cities[data.target].hasResearchStation) { 
-            targetP.location = data.target; gameState.actionsLeft--; 
+            if (idx !== -1) { p.cards.splice(idx, 1); targetP.location = data.target; gameState.actionsLeft--; actionTaken = true; }
+        } else if (data.type === 'move_shuttle') {
+            if (gameState.cities[targetP.location].hasResearchStation && gameState.cities[data.target].hasResearchStation) { 
+                targetP.location = data.target; gameState.actionsLeft--; actionTaken = true; 
+            }
         }
         else if (data.type === 'move_gather' && p.role === '운항 관리자') {
-            targetP.location = data.target; gameState.actionsLeft--;
+            let hasOther = Object.values(gameState.players).some(u => u.location === data.target && u.id !== targetP.id);
+            if (hasOther) {
+                targetP.location = data.target; gameState.actionsLeft--; actionTaken = true;
+            }
         }
-        // 🔥 7. 건축 전문가 특수 비행 능력 (연구소 -> 아무 곳)
         else if (data.type === 'move_ops_expert' && p.role === '건축 전문가') {
-            if (gameState.cities[p.location].hasResearchStation) {
+            if (gameState.cities[p.location].hasResearchStation && cityData[data.target]) {
                 let idx = p.cards.findIndex(c => c.name === data.cardName);
                 if (idx !== -1) {
                     p.cards.splice(idx, 1);
                     p.location = data.target;
                     gameState.actionsLeft--;
+                    actionTaken = true;
                     gameState.log.unshift(`✈️ [건축 전문가] 특수 비행으로 ${data.target}(으)로 이동했습니다.`);
                 }
             }
         }
         else if (data.type === 'build') {
-            if (p.role === '건축 전문가' || p.cards.some(c => c.name === p.location)) {
-                if (p.role !== '건축 전문가') p.cards.splice(p.cards.findIndex(c => c.name === p.location), 1);
-                gameState.cities[p.location].hasResearchStation = true; gameState.actionsLeft--;
+            if (!gameState.cities[p.location].hasResearchStation) {
+                if (p.role === '건축 전문가' || p.cards.some(c => c.name === p.location)) {
+                    if (p.role !== '건축 전문가') p.cards.splice(p.cards.findIndex(c => c.name === p.location), 1);
+                    gameState.cities[p.location].hasResearchStation = true; gameState.actionsLeft--; actionTaken = true;
+                }
             }
         } 
         else if (data.type === 'treat') {
@@ -337,6 +351,7 @@ io.on('connection', (socket) => {
                 if (!(p.role === '위생병' && gameState.cures[targetColor])) gameState.actionsLeft--;
                 checkEradication(targetColor);
                 gameState.log.unshift(`💊 [치료] ${p.location}에서 질병을 치료했습니다.`);
+                actionTaken = true;
             }
         } 
         else if (data.type === 'share_give' && partner && partner.location === p.location) {
@@ -346,21 +361,32 @@ io.on('connection', (socket) => {
                     partner.cards.push(p.cards.splice(idx, 1)[0]);
                     gameState.actionsLeft--;
                     gameState.log.unshift(`🤝 [지식 공유] ${data.cardName} 카드를 넘겨주었습니다.`);
+                    actionTaken = true;
                 }
             }
         } 
         else if (data.type === 'discoverCure' && gameState.cities[p.location].hasResearchStation) {
-            const need = (p.role === '과학자') ? 4 : 5;
-            let counts = {};
-            p.cards.forEach(c => { if(c.type==='city') counts[c.color] = (counts[c.color] || 0) + 1; });
-            for (let col in counts) {
-                if (counts[col] >= need) {
-                    gameState.cures[col] = true; p.cards = p.cards.filter(c => c.color !== col || c.type !== 'city');
-                    gameState.actionsLeft--; checkEradication(col);
-                    if (Object.values(gameState.cures).every(v => v)) gameState.gameWin = true;
-                    break;
+            let col = data.color;
+            if (!gameState.cures[col]) {
+                gameState.cures[col] = true;
+                if (data.cardsToUse && data.cardsToUse.length > 0) {
+                    data.cardsToUse.forEach(cardName => {
+                        let idx = p.cards.findIndex(c => c.name === cardName);
+                        if (idx !== -1) p.cards.splice(idx, 1);
+                    });
                 }
+                gameState.actionsLeft--; checkEradication(col);
+                if (Object.values(gameState.cures).every(v => v)) gameState.gameWin = true;
+                gameState.log.unshift(`🧪 [백신 개발] ${p.role}이(가) 백신을 개발했습니다!`);
+                actionTaken = true;
             }
+        }
+
+        if (!actionTaken) {
+            if (data.type.startsWith('move')) socket.emit('systemAlert', '이동할 수 없는 경로이거나 카드/연구소 등의 조건이 맞지 않습니다.');
+            else if (data.type === 'build') socket.emit('systemAlert', '해당 도시 카드가 없거나 이미 연구소가 있습니다.');
+            else if (data.type === 'share_give') socket.emit('systemAlert', '해당 도시 카드가 없거나 동료가 같은 위치에 없습니다.');
+            return; 
         }
 
         if (gameState.actionsLeft === 0) {

@@ -11,7 +11,6 @@
         #board { position: relative; width: 1280px; height: 720px; background-color: #1e293b; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); border: 1px solid #334155; }
         canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
         
-        /* 🔥 3. 3큐브 위험 지역 알림바 */
         #danger-zones-bar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fca5a5; padding: 8px 20px; border-radius: 20px; border: 1px solid #ef4444; font-size: 14px; font-weight: bold; z-index: 20; display: none; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
         
         .city-node { position: absolute; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 3px solid #fff; box-shadow: 0 0 8px rgba(0,0,0,0.6); z-index: 10; transform: translate(-50%, -50%); transition: transform 0.2s; }
@@ -19,7 +18,6 @@
         .city-label { position: absolute; top: -23px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: bold; text-shadow: 2px 2px 4px #000; white-space: nowrap; }
         .cube-indicator { position: absolute; width: 20px; height: 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 1px 1px 3px rgba(0,0,0,0.8); z-index: 15; }
         
-        /* 🔥 5. 말(Pawn) 시각적 개선 (명확한 둥근 뱃지) */
         .city-occupants { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
         .player-pawn { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: white; box-shadow: 1px 1px 5px rgba(0,0,0,0.8); border: 2px solid white; text-shadow: 1px 1px 2px black; }
         
@@ -36,9 +34,10 @@
         .btn-action { display: block; width: 100%; padding: 11px; margin-bottom: 7px; background: #334155; color: white; border: none; border-radius: 5px; cursor: pointer; text-align: left; font-size: 13px; }
         .btn-action:hover { background: #475569; }
         
-        /* 🔥 1, 2. 전염/확산 알림용 CSS 애니메이션 */
         @keyframes slideDown { 0% { transform: translateY(-50px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
         @keyframes fadeOut { 0% { opacity: 1; } 100% { opacity: 0; } }
+        
+        /* 알림 팝업들이 쌓이는 구역 */
         #alert-layer { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 10px; align-items: center; }
     </style>
 </head>

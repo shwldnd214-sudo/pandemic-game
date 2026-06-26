@@ -5,7 +5,7 @@ const cityPositions = {
     "뉴욕": { x: 440, y: 150 }, "애틀랜타": { x: 210, y: 270 }, "워싱턴": { x: 340, y: 250 }, 
     "런던": { x: 550, y: 130 }, "에센": { x: 660, y: 100 }, "상트페테르부르크": { x: 780, y: 90 }, 
     "마드리드": { x: 530, y: 290 }, "파리": { x: 630, y: 210 }, "밀라노": { x: 730, y: 170 },
-    "로스앤젤레스": { x: 80, y: 360 }, "멕시코시티": { x: 180, y: 440 }, "마이매미": { x: 300, y: 380 }, 
+    "로스앤젤레스": { x: 80, y: 360 }, "멕시코시티": { x: 180, y: 440 }, "마이애미": { x: 300, y: 380 }, 
     "보고타": { x: 290, y: 510 }, "리마": { x: 250, y: 610 }, "산티아고": { x: 200, y: 670 }, 
     "부에노스아이레스": { x: 360, y: 660 }, "상파울루": { x: 420, y: 560 },
     "라고스": { x: 600, y: 500 }, "킨샤샤": { x: 660, y: 590 }, "카르툼": { x: 750, y: 500 }, "요하네스버그": { x: 740, y: 660 },
@@ -23,8 +23,22 @@ let localState = null;
 let targetCity = null;
 
 socket.on('forceReload', () => { location.reload(); });
+socket.on('systemAlert', (msg) => { alert(`⚠️ 작전 실패: ${msg}`); });
 
-// 🔥 1, 2. 이벤트 알림 소켓 수신 및 시각 효과 발동
+// 🔥 턴 변경 알림 팝업 추가
+socket.on('turnChangeAlert', (data) => {
+    const div = document.createElement('div');
+    if (data.id === socket.id) {
+        div.innerHTML = `🟢 <strong>내 차례입니다!</strong> 작전을 개시하십시오.`;
+        div.style.cssText = "background:rgba(16, 185, 129, 0.95); color:white; padding:15px 30px; border-radius:8px; font-weight:bold; font-size:18px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 2px solid #34d399; animation: slideDown 0.3s, fadeOut 1s 2s forwards;";
+    } else {
+        div.innerHTML = `⏳ <strong>${data.role}</strong> 요원의 턴 진행 중...`;
+        div.style.cssText = "background:rgba(51, 65, 85, 0.95); color:#cbd5e1; padding:10px 20px; border-radius:8px; font-weight:bold; font-size:14px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); animation: slideDown 0.3s, fadeOut 1s 1.5s forwards;";
+    }
+    document.getElementById('alert-layer').appendChild(div);
+    setTimeout(() => div.remove(), 3500); // 3.5초 뒤 자동 삭제
+});
+
 socket.on('epidemicAlert', (city) => {
     const div = document.createElement('div');
     div.innerHTML = `⚠️ 전염 발생! <strong>[${city}]</strong>에 바이러스 3개가 투하되었습니다!`;
@@ -34,13 +48,11 @@ socket.on('epidemicAlert', (city) => {
 });
 
 socket.on('outbreakAlert', (city) => {
-    // 붉은 화면 번쩍!
     const flash = document.createElement('div');
     flash.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(220, 38, 38, 0.35); z-index:9998; pointer-events:none; animation: fadeOut 0.8s forwards;";
     document.body.appendChild(flash);
     setTimeout(() => flash.remove(), 800);
 
-    // 텍스트 경고창
     const div = document.createElement('div');
     div.innerHTML = `💥 <strong>${city}</strong> 연쇄 확산 (Outbreak)!`;
     div.style.cssText = "background:rgba(180, 83, 9, 0.95); color:white; padding:12px 25px; border-radius:8px; font-weight:bold; font-size:16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); animation: slideDown 0.2s, fadeOut 1s 2.5s forwards;";
@@ -68,7 +80,6 @@ socket.on('update', s => { localState = s; drawLines(); render(); });
 
 function openGuideModal() { document.getElementById('guide-modal').style.display = 'flex'; }
 
-// 🔥 4. 맵 바깥(태평양)으로 자연스럽게 연결되는 선 컬러 지정 로직
 function drawLines() {
     const ctx = document.getElementById('map-canvas').getContext('2d');
     ctx.clearRect(0, 0, 1280, 720);
@@ -82,29 +93,18 @@ function drawLines() {
             let to = cityPositions[n];
             if(to){
                 let dx = to.x - from.x;
-                
-                // 1) 기본 연결선 색상은 반투명 하얀색
                 ctx.strokeStyle = "rgba(255,255,255,0.2)";
 
-                if (Math.abs(dx) > 640) { // 화면 가로폭 절반을 넘는 경우 = 태평양 횡단 노선
-                    
-                    // 2) 태평양 노선별 전용 색상 적용
-                    if ((name === '샌프란시스코' && n === '도쿄') || (name === '도쿄' && n === '샌프란시스코')) {
-                        ctx.strokeStyle = "#22c55e"; // 초록색
-                    } else if ((name === '샌프란시스코' && n === '마닐라') || (name === '마닐라' && n === '샌프란시스코')) {
-                        ctx.strokeStyle = "#ec4899"; // 핑크색
-                    } else if ((name === '로스앤젤레스' && n === '시드니') || (name === '시드니' && n === '로스앤젤레스')) {
-                        ctx.strokeStyle = "#06b6d4"; // 하늘색
-                    }
+                if (Math.abs(dx) > 640) { 
+                    if ((name === '샌프란시스코' && n === '도쿄') || (name === '도쿄' && n === '샌프란시스코')) ctx.strokeStyle = "#22c55e";
+                    else if ((name === '샌프란시스코' && n === '마닐라') || (name === '마닐라' && n === '샌프란시스코')) ctx.strokeStyle = "#ec4899";
+                    else if ((name === '로스앤젤레스' && n === '시드니') || (name === '시드니' && n === '로스앤젤레스')) ctx.strokeStyle = "#06b6d4";
 
-                    // 선 긋기
                     ctx.beginPath();
                     ctx.moveTo(from.x, from.y);
                     ctx.lineTo(from.x < to.x ? -50 : 1330, (from.y + to.y) / 2);
                     ctx.stroke();
-
                 } else {
-                    // 일반 내부 노선 긋기
                     ctx.beginPath(); 
                     ctx.moveTo(from.x, from.y); 
                     ctx.lineTo(to.x, to.y); 
@@ -128,7 +128,6 @@ function render() {
     document.getElementById('txt-outbreak').innerText = localState.outbreaks;
     document.getElementById('turn-alert').innerText = localState.currentTurnPlayer === socket.id ? "🔴 내 차례입니다!" : "⏳ 동료의 차례 대기 중...";
 
-    // 🔥 3. 큐브 3개 위험 지역 계산 후 상단 표시
     let dangerCities = [];
     for (let name in localState.cities) {
         let c = localState.cities[name];
@@ -159,21 +158,20 @@ function render() {
         if(localState.eradicated[c.color]) node.style.borderColor = "red";
         else if(localState.cures[c.color]) node.style.borderColor = "#10b981";
 
-        let labelHtml = `<div class="city-label" style="color:${c.color}">${name}${c.hasResearchStation?'🏢':''}</div>`;
+        let labelHtml = `<div class="city-label" style="color:${c.color}; pointer-events:none;">${name}${c.hasResearchStation?'🏢':''}</div>`;
         let cubeHtml = '';
         let offset = 0;
         for(let col in c.cubes) {
             if(c.cubes[col] > 0) {
-                cubeHtml += `<div class="cube-indicator" style="background:${col}; top:-8px; right:${-12 + offset}px;">${c.cubes[col]}</div>`;
+                cubeHtml += `<div class="cube-indicator" style="background:${col}; top:-8px; right:${-12 + offset}px; pointer-events:none;">${c.cubes[col]}</div>`;
                 offset += 22; 
             }
         }
         node.innerHTML = labelHtml + cubeHtml;
         
-        // 🔥 5. 말(Pawn)을 크고 직관적인 둥근 뱃지로 변경
         let pawns = Object.values(localState.players).filter(p => p.location === name);
         if(pawns.length > 0) {
-            const occ = document.createElement('div'); occ.className = 'city-occupants';
+            const occ = document.createElement('div'); occ.className = 'city-occupants'; occ.style.pointerEvents = 'none';
             occ.innerHTML = pawns.map(p => `<span class="player-pawn" style="background:${p.roleColor}">${p.role[0]}</span>`).join('');
             node.appendChild(occ);
         }
@@ -240,7 +238,6 @@ function openModal(name) {
         else gatherBtn.style.display = 'none';
     }
     
-    // 🔥 7. 건축 전문가 특수 기지 비행 버튼 노출 로직
     const opsBtn = document.getElementById('btn-ops-expert');
     if (opsBtn) {
         if (my.role === '건축 전문가' && localState.cities[my.location].hasResearchStation && my.location !== name && my.cards.length > 0) {
@@ -261,13 +258,33 @@ function sendAction(type) {
     closeModal(); 
 }
 
+function getValidCardFromPrompt(msg, cardList) {
+    while(true) {
+        let input = prompt(msg);
+        if (input === null) return null; 
+        input = input.trim();
+        if (cardList.includes(input)) return input;
+        alert(`❌ 오타가 발생했습니다!\n'${input}'(은)는 보유하신 카드가 아닙니다. 다시 입력해주세요.`);
+    }
+}
+
+function getValidCityFromPrompt(msg) {
+    while(true) {
+        let input = prompt(msg);
+        if (input === null) return null; 
+        input = input.trim();
+        if (cityPositions.hasOwnProperty(input)) return input;
+        alert(`❌ 오타가 발생했습니다!\n'${input}'(은)는 맵에 존재하지 않는 도시입니다. 다시 입력해주세요.`);
+    }
+}
+
 function sendOpsExpertMove() {
     let my = localState.players[socket.id];
-    let cardList = my.cards.map(c => c.name).join(', ');
-    let cardName = prompt(`버릴 카드의 이름을 정확히 적어주세요.\n(내 보유 카드: ${cardList})`);
+    let cardNames = my.cards.map(c => c.name);
+    let cardName = getValidCardFromPrompt(`버릴 카드의 이름을 정확히 적어주세요.\n(내 보유 카드: ${cardNames.join(', ')})`, cardNames);
     
     if (cardName) {
-        socket.emit('playerAction', { type: 'move_ops_expert', target: targetCity, cardName: cardName.trim() });
+        socket.emit('playerAction', { type: 'move_ops_expert', target: targetCity, cardName: cardName });
         closeModal();
     }
 }
@@ -285,36 +302,100 @@ function treat() {
     if(activeColors.length > 1) {
         let nameMap = {"#3498db":"1. 파랑", "#f1c40f":"2. 노랑", "#7f8c8d":"3. 회색", "#e74c3c":"4. 빨강"};
         let menu = activeColors.map(c => nameMap[c]).join('\n');
-        let choice = prompt(`치료할 질병 번호를 선택하세요:\n${menu}`, "1");
-        if(choice) {
+        
+        while(true) {
+            let choice = prompt(`치료할 질병 번호를 선택하세요:\n${menu}`, "1");
+            if (choice === null) return; 
             let matched = activeColors.find(c => nameMap[c].startsWith(choice));
-            if(matched) selectedColor = matched;
-        } else return;
+            if(matched) { selectedColor = matched; break; }
+            alert("❌ 오타가 발생했습니다! 정확한 번호(1~4)를 입력해주세요.");
+        }
     }
     socket.emit('playerAction', {type:'treat', color: selectedColor}); 
 }
 
 function build() { socket.emit('playerAction', {type:'build'}); }
-function cure() { socket.emit('playerAction', {type:'discoverCure'}); }
+
+function cure() { 
+    const my = localState.players[socket.id];
+    if (!localState.cities[my.location].hasResearchStation) {
+        alert("연구소가 있는 도시에서만 백신을 개발할 수 있습니다.");
+        return;
+    }
+    
+    const need = (my.role === '과학자') ? 4 : 5;
+    let counts = {};
+    my.cards.forEach(c => { 
+        if(c.type==='city') { counts[c.color] = counts[c.color] || []; counts[c.color].push(c.name); } 
+    });
+    
+    let possibleColors = [];
+    for(let col in counts) { if(counts[col].length >= need && !localState.cures[col]) possibleColors.push(col); }
+    
+    if(possibleColors.length === 0) { alert(`백신 개발에는 같은 색상의 도시 카드가 ${need}장 필요합니다.`); return; }
+    
+    let targetColor = possibleColors[0];
+    let cardsToUse = counts[targetColor].slice(0, need); 
+    
+    if (counts[targetColor].length > need) {
+        let list = counts[targetColor].join(', ');
+        
+        while(true) {
+            let input = prompt(`[보유: ${list}]\n\n${need}장의 카드만 소모합니다. 소모할 카드 ${need}장의 이름을 쉼표(,)로 구분해 적어주세요.\n(취소 시 작전이 취소됩니다.)`);
+            if (input === null) return; 
+            
+            let chosen = input.split(',').map(s => s.trim()).filter(s => counts[targetColor].includes(s));
+            if (chosen.length === need) {
+                cardsToUse = chosen;
+                break;
+            } else {
+                alert(`❌ 오타가 있거나 카드가 ${need}장이 아닙니다!\n보유 목록을 확인하시고 쉼표(,)로 정확히 구분해 다시 적어주세요.`);
+            }
+        }
+    }
+    socket.emit('playerAction', {type:'discoverCure', color: targetColor, cardsToUse: cardsToUse}); 
+}
 
 function share() { 
     const my = localState.players[socket.id];
     const partner = Object.values(localState.players).find(p => p.id !== socket.id);
     if(partner && partner.location === my.location) {
         if(my.cards.length === 0) { alert("양도할 카드가 없습니다."); return; }
-        let cardList = my.cards.map(c => c.name).join(', ');
-        let cardName = prompt(`동료 요원에게 인계할 도시 카드명을 정확히 적어주세요.\n(내 보유: ${cardList})`);
-        if(cardName) socket.emit('playerAction', {type:'share_give', cardName: cardName.trim()});
+        
+        let cardNames = my.cards.map(c => c.name);
+        let cardName = getValidCardFromPrompt(`동료 요원에게 인계할 도시 카드명을 정확히 적어주세요.\n(내 보유: ${cardNames.join(', ')})`, cardNames);
+        
+        if(cardName) socket.emit('playerAction', {type:'share_give', cardName: cardName});
     } else alert("동일한 대피소/도시에 동료 요원이 상주해있지 않습니다.");
 }
 
 function useEvent(name) {
     let targetPlayerId = null;
-    if(name === "정부 보조금") targetCity = prompt("연구소를 무상 특설할 도시명을 기입하세요:");
+    let targetCity = null;
+
+    if(name === "정부 보조금") {
+        targetCity = getValidCityFromPrompt("연구소를 무상 특설할 도시명을 기입하세요:");
+        if(!targetCity) return; 
+    }
     else if(name === "긴급 공중 수송") { 
-        targetCity = prompt("수송할 목적지 도시명:"); 
-        let who = prompt("누구를 수송 선박에 태울까요? (1: 나, 2: 동료 요원)"); 
-        if(who === "2") targetPlayerId = Object.keys(localState.players).find(id => id !== socket.id);
-    } else if(name === "항체 보유자") targetCity = prompt("폐기 더미에서 완전 격리할 감염 카드 도시명:");
+        targetCity = getValidCityFromPrompt("수송할 목적지 도시명을 기입하세요:"); 
+        if(!targetCity) return; 
+        
+        while(true) {
+            let who = prompt("누구를 수송 선박에 태울까요? (1: 나, 2: 동료 요원)"); 
+            if(who === null) return; 
+            if(who === "1") break;
+            if(who === "2") {
+                targetPlayerId = Object.keys(localState.players).find(id => id !== socket.id);
+                break;
+            }
+            alert("❌ 잘못된 입력입니다. '1' 또는 '2'를 입력해주세요.");
+        }
+    } 
+    else if(name === "항체 보유자") {
+        targetCity = getValidCityFromPrompt("폐기 더미에서 완전 격리할 감염 카드 도시명을 기입하세요:");
+        if(!targetCity) return; 
+    }
+    
     socket.emit('useChanceCard', {cardName: name, targetCity, targetPlayerId});
 }
