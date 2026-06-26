@@ -7,7 +7,7 @@ const io = require('socket.io')(http, {
 
 app.use(express.static('public'));
 
-// 🔥 시카고 <-> 로스앤젤레스 연결망 수정 완료
+// 도시 및 색상, 이웃 연결망 정보
 const cityData = {
     "샌프란시스코": { color: "#3498db", neighbors: ["시카고", "로스앤젤레스", "도쿄", "마닐라"] }, 
     "시카고": { color: "#3498db", neighbors: ["샌프란시스코", "로스앤젤레스", "몬트리올", "애틀랜타", "멕시코시티"] }, 
@@ -276,7 +276,7 @@ io.on('connection', (socket) => {
         if(!p) return;
         let partner = Object.values(gameState.players).find(u => u.id !== socket.id);
 
-        // 🔥 운항 관리자 동료 조종 타겟 설정
+        // UI 단에서 전달받은 targetPlayerId를 기준으로 움직일 대상(targetP) 설정
         let targetP = p;
         if (p.role === '운항 관리자' && data.targetPlayerId) {
             targetP = gameState.players[data.targetPlayerId];
@@ -294,12 +294,10 @@ io.on('connection', (socket) => {
         } else if (data.type === 'move_shuttle' && gameState.cities[targetP.location].hasResearchStation && gameState.cities[data.target].hasResearchStation) { 
             targetP.location = data.target; gameState.actionsLeft--; 
         }
-        // 🔥 운항 관리자 합류 스킬
         else if (data.type === 'move_gather' && p.role === '운항 관리자') {
             targetP.location = data.target; gameState.actionsLeft--;
-            gameState.log.unshift(`✈️ [운항 관리자] 합류 능력으로 요원을 워프시켰습니다.`);
+            gameState.log.unshift(`✈️ [운항 관리자] 합류 능력으로 요원을 해당 도시로 합류시켰습니다.`);
         }
-        
         else if (data.type === 'build') {
             if (p.role === '건축 전문가' || p.cards.some(c => c.name === p.location)) {
                 if (p.role !== '건축 전문가') p.cards.splice(p.cards.findIndex(c => c.name === p.location), 1);
@@ -359,4 +357,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3050;
-http.listen(PORT, () => console.log(`작전 서버 가동: ${PORT}`));
+http.listen(PORT, () => console.log(`작전 통제 서버 러닝 중: ${PORT}`));

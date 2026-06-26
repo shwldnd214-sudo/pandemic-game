@@ -1,17 +1,29 @@
 const socket = io();
 
-// 🔥 해상도 1400x900에 맞춰 도시 간격을 널찍하게 완전 재배치
+// 🔥 1280x720 규격 안에 맞추고 아시아-태평양 밀집 지역 스케일 조율 완료!
 const cityPositions = {
-    "샌프란시스코": { x: 140, y: 300 }, "시카고": { x: 330, y: 220 }, "몬트리올": { x: 480, y: 200 }, "뉴욕": { x: 620, y: 220 }, "애틀랜타": { x: 370, y: 360 }, "워싱턴": { x: 530, y: 330 }, 
-    "런던": { x: 740, y: 200 }, "에센": { x: 860, y: 150 }, "상트페테르부르크": { x: 1020, y: 120 }, "마드리드": { x: 700, y: 360 }, "파리": { x: 820, y: 280 }, "밀라노": { x: 930, y: 240 },
-    "로스앤젤레스": { x: 160, y: 480 }, "멕시코시티": { x: 300, y: 550 }, "마이매미": { x: 460, y: 490 }, "보고타": { x: 440, y: 660 }, "리마": { x: 380, y: 800 }, "산티아고": { x: 400, y: 940 }, "부에노스아이레스": { x: 580, y: 900 }, "상파울루": { x: 620, y: 730 }, 
-    "라고스": { x: 800, y: 650 }, "킨샤샤": { x: 850, y: 780 }, "카르툼": { x: 960, y: 640 }, "요하네스버그": { x: 950, y: 900 },
-    "알제": { x: 810, y: 450 }, "이스탄불": { x: 960, y: 380 }, "모스크바": { x: 1080, y: 240 }, "테헤란": { x: 1180, y: 320 }, "바그다드": { x: 1060, y: 460 }, "카이로": { x: 930, y: 530 }, "리야드": { x: 1040, y: 570 }, "카라치": { x: 1190, y: 530 }, "델리": { x: 1290, y: 400 }, "뭄바이": { x: 1250, y: 620 }, "첸나이": { x: 1350, y: 700 }, "콜카타": { x: 1390, y: 480 },
-    "베이징": { x: 1290, y: 200 }, "서울": { x: 1430, y: 180 }, "도쿄": { x: 1510, y: 280 }, "상하이": { x: 1380, y: 300 }, 
-    "방콕": { x: 1310, y: 590 }, "홍콩": { x: 1410, y: 430 }, 
-    "타이베이": { x: 1490, y: 400 }, // 🔥 오사카와 완벽 분리
-    "오사카": { x: 1510, y: 330 }, 
-    "자카르타": { x: 1250, y: 780 }, "호치민 시티": { x: 1390, y: 760 }, "마닐라": { x: 1500, y: 560 }, "시드니": { x: 1480, y: 920 }
+    // 북미권 (파랑)
+    "샌프란시스코": { x: 70, y: 240 }, "시카고": { x: 190, y: 160 }, "몬트리올": { x: 310, y: 130 }, 
+    "뉴욕": { x: 440, y: 150 }, "애틀랜타": { x: 210, y: 270 }, "워싱턴": { x: 340, y: 250 }, 
+    // 유럽권 (파랑)
+    "런던": { x: 550, y: 130 }, "에센": { x: 660, y: 100 }, "상트페테르부르크": { x: 780, y: 90 }, 
+    "마드리드": { x: 530, y: 290 }, "파리": { x: 630, y: 210 }, "밀라노": { x: 730, y: 170 },
+    // 남미권 (노랑)
+    "로스앤젤레스": { x: 80, y: 360 }, "멕시코시티": { x: 180, y: 440 }, "마이매미": { x: 300, y: 380 }, 
+    "보고타": { x: 290, y: 510 }, "리마": { x: 250, y: 610 }, "산티아고": { x: 200, y: 670 }, 
+    "부에노스아이레스": { x: 360, y: 660 }, "상파울루": { x: 420, y: 560 },
+    // 아프리카 대륙 (노랑)
+    "라고스": { x: 600, y: 500 }, "킨샤샤": { x: 660, y: 590 }, "카르툼": { x: 750, y: 500 }, "요하네스버그": { x: 740, y: 660 },
+    // 중동 및 서아시아 (회색)
+    "알제": { x: 640, y: 350 }, "이스탄불": { x: 750, y: 280 }, "모스크바": { x: 850, y: 180 }, 
+    "테헤란": { x: 940, y: 220 }, "바그다드": { x: 850, y: 330 }, "카이로": { x: 740, y: 410 }, 
+    "리야드": { x: 840, y: 440 }, "카라치": { x: 950, y: 380 }, "델리": { x: 1020, y: 300 }, 
+    "뭄바이": { x: 960, y: 490 }, "첸나이": { x: 1040, y: 540 }, "콜카타": { x: 1090, y: 370 },
+    // 동아시아 및 오세아니아 라인 (빨강 - 겹침 현상 완벽 완화)
+    "베이징": { x: 1110, y: 150 }, "서울": { x: 1190, y: 120 }, "도쿄": { x: 1240, y: 180 }, 
+    "상하이": { x: 1130, y: 240 }, "오사카": { x: 1230, y: 250 }, "타이베이": { x: 1210, y: 330 }, 
+    "홍콩": { x: 1140, y: 340 }, "방콕": { x: 1110, y: 450 }, "마닐라": { x: 1230, y: 430 }, 
+    "호치민 시티": { x: 1170, y: 530 }, "자카르타": { x: 1100, y: 610 }, "시드니": { x: 1220, y: 640 }
 };
 
 let localState = null;
@@ -27,12 +39,12 @@ socket.on('setupData', (data) => {
         const btn = document.createElement('div');
         btn.className = 'role-btn';
         btn.style.borderColor = info.color;
-        btn.innerHTML = `<h3 style="color:${info.color}; margin-bottom:5px; font-size:16px;">${roleName}</h3><p style="font-size:12px; color:#cbd5e1;">${info.desc}</p>`;
+        btn.innerHTML = `<h3 style="color:${info.color}; margin-bottom:4px; font-size:14px;">${roleName}</h3><p style="font-size:11px; color:#cbd5e1; margin:0;">${info.desc}</p>`;
         btn.onclick = () => { socket.emit('selectRole', roleName); document.getElementById('role-overlay').style.display = 'none'; };
         roleContainer.appendChild(btn);
     });
-    document.getElementById('guide-roles').innerHTML = Object.keys(data.roleDetails).map(r => `<div style="margin-bottom:10px;"><strong style="color:${data.roleDetails[r].color};">${r}</strong>: ${data.roleDetails[r].desc}</div>`).join('');
-    document.getElementById('guide-events').innerHTML = Object.keys(data.chanceCardGuides).map(e => `<div style="margin-bottom:10px;"><strong style="color:#d8b4fe;">${e}</strong>: ${data.chanceCardGuides[e]}</div>`).join('');
+    document.getElementById('guide-roles').innerHTML = Object.keys(data.roleDetails).map(r => `<div style="margin-bottom:8px;"><strong style="color:${data.roleDetails[r].color};">${r}</strong>: ${data.roleDetails[r].desc}</div>`).join('');
+    document.getElementById('guide-events').innerHTML = Object.keys(data.chanceCardGuides).map(e => `<div style="margin-bottom:8px;"><strong style="color:#d8b4fe;">${e}</strong>: ${data.chanceCardGuides[e]}</div>`).join('');
 });
 
 socket.on('update', s => { localState = s; drawLines(); render(); });
@@ -41,8 +53,8 @@ function openGuideModal() { document.getElementById('guide-modal').style.display
 
 function drawLines() {
     const ctx = document.getElementById('map-canvas').getContext('2d');
-    ctx.clearRect(0, 0, 1600, 1000); // 캔버스 초기화 사이즈 확장
-    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 3;
+    ctx.clearRect(0, 0, 1280, 720);
+    ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 2.5;
     for (let name in cityPositions) {
         let from = cityPositions[name];
         if(!localState.cities[name]) continue;
@@ -69,7 +81,7 @@ function render() {
     const vaccineMap = {"#3498db":"v-blue", "#f1c40f":"v-yellow", "#7f8c8d":"v-gray", "#e74c3c":"v-red"};
     for(let color in vaccineMap) {
         const el = document.getElementById(vaccineMap[color]);
-        if (localState.eradicated[color]) { el.style.opacity = "1"; el.innerText = "근절★"; el.style.border = "2px solid red"; }
+        if (localState.eradicated[color]) { el.style.opacity = "1"; el.innerText = "근절★"; el.style.border = "1px solid red"; }
         else if (localState.cures[color]) { el.style.opacity = "1"; el.innerText = "개발🧪"; el.style.border = "none"; }
     }
 
@@ -87,7 +99,7 @@ function render() {
         for(let col in c.cubes) {
             if(c.cubes[col] > 0) {
                 cubeHtml += `<div class="cube-indicator" style="background:${col}; top:-8px; right:${-12 + offset}px;">${c.cubes[col]}</div>`;
-                offset += 24; 
+                offset += 22; 
             }
         }
         node.innerHTML = labelHtml + cubeHtml;
@@ -103,57 +115,76 @@ function render() {
     }
 
     const cardSec = document.getElementById('card-section');
-    cardSec.innerHTML = `<h3 style="margin-bottom:10px; color:white; font-size:15px;">🃏 내 카드 (${my.cards.length}/7)</h3>` + 
+    cardSec.innerHTML = `<h3 style="margin-bottom:8px; color:white; font-size:14px; margin-top:0;">🃏 내 카드 (${my.cards.length}/7)</h3>` + 
         my.cards.map(c => `
-            <div style="background:${c.type==='chance'?'#1e293b':c.color}; border:1px solid ${c.type==='chance'?'#9333ea':c.color}; padding:8px; margin-bottom:6px; border-radius:6px; font-size:13px; color:${c.type==='chance'?'#d8b4fe':'#000'}; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:${c.type==='chance'?'#1e293b':c.color}; border:1px solid ${c.type==='chance'?'#9333ea':c.color}; padding:6px; margin-bottom:5px; border-radius:5px; font-size:12px; color:${c.type==='chance'?'#d8b4fe':'#000'}; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
                 ${c.name} 
                 <div>
-                    ${c.type==='chance'? `<button onclick="useEvent('${c.name}')" style="background:#9333ea; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; margin-right:4px;">사용</button>` : ''}
-                    <button onclick="socket.emit('discardCardManually',{cardName:'${c.name}'})" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">버리기</button>
+                    ${c.type==='chance'? `<button onclick="useEvent('${c.name}')" style="background:#9333ea; border:none; color:white; padding:3px 6px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:3px;">사용</button>` : ''}
+                    <button onclick="socket.emit('discardCardManually',{cardName:'${c.name}'})" style="background:#ef4444; border:none; color:white; padding:3px 6px; border-radius:4px; font-size:10px; cursor:pointer;">버리기</button>
                 </div>
             </div>
         `).join('');
 
-    if (localState.isDiscardPhase && localState.discardPlayerId === socket.id) alert("⚠️ 손패가 7장을 초과했습니다! 카드를 버리거나 이벤트를 사용하세요.");
+    if (localState.isDiscardPhase && localState.discardPlayerId === socket.id) alert("⚠️ 손패가 7장을 넘었습니다! 카드를 한 장 정리해 주세요.");
 
-    document.getElementById('log-area').innerHTML = localState.log.map(l => `<div style="margin-bottom:5px; border-bottom:1px solid #334155; padding-bottom:5px;">${l}</div>`).join('');
+    document.getElementById('log-area').innerHTML = localState.log.map(l => `<div style="margin-bottom:4px; border-bottom:1px solid #334155; padding-bottom:4px;">${l}</div>`).join('');
     
     if(localState.gameOver && !window.hasAlertedGameEnd){ 
         window.hasAlertedGameEnd = true;
-        alert("❌ 확산 8회 도달 또는 덱 고갈로 방역 작전에 실패했습니다..."); 
+        alert("❌ 전염 가속화 또는 확산 임계점 도달로 방역에 실패했습니다."); 
     }
     if(localState.gameWin && !window.hasAlertedGameEnd){ 
         window.hasAlertedGameEnd = true;
-        alert("🎉 4가지 치료제를 모두 개발했습니다! 인류를 구원했습니다!"); 
+        alert("🎉 모든 질병의 백신 개발 완료! 지구를 지켜냈습니다!"); 
     }
 }
 
-// 🔥 운항 관리자 동료 조종 및 합류 로직 완벽 연동
+// 🔥 운항 관리자 능력 사용 시 선택창 고도화 (드롭다운 연동)
 function openModal(name) { 
     targetCity = name; 
-    document.getElementById('modal-city-name').innerText = name; 
+    document.getElementById('modal-city-name').innerText = name + " 작전 개시"; 
     
+    const my = localState.players[socket.id];
+    const selectMover = document.getElementById('select-mover-target');
+    const moverZone = document.getElementById('mover-selection-zone');
+    
+    selectMover.innerHTML = ''; // 드롭다운 내부 초기화
+    
+    // 1번 옵션: 나 자신
+    const optMe = document.createElement('option');
+    optMe.value = socket.id;
+    optMe.innerText = `1. 나 (${my.role})`;
+    selectMover.appendChild(optMe);
+    
+    // 2번 옵션: 동료 요원 검색
+    const partner = Object.values(localState.players).find(p => p.id !== socket.id);
+    
+    if (my.role === '운항 관리자' && partner) {
+        const optPartner = document.createElement('option');
+        optPartner.value = partner.id;
+        optPartner.innerText = `2. 동료 (${partner.role})`;
+        selectMover.appendChild(optPartner);
+        moverZone.style.display = 'block'; // 운항관리자일 때만 선택창 활성화
+    } else {
+        moverZone.style.display = 'none';  // 일반 요원은 본인 말만 조종하므로 숨김
+    }
+    
+    // 합류 스킬 버튼 가시성 처리
     const gatherBtn = document.getElementById('btn-dispatcher-gather');
-    if (gatherBtn && localState) {
-        const my = localState.players[socket.id];
+    if (gatherBtn) {
         const hasOtherPlayer = Object.values(localState.players).some(p => p.location === name && p.id !== socket.id);
         if (my.role === '운항 관리자' && hasOtherPlayer) gatherBtn.style.display = 'block';
         else gatherBtn.style.display = 'none';
     }
+    
     document.getElementById('action-modal').style.display = 'block'; 
 }
 
 function sendAction(type) { 
-    let targetPlayerId = null;
-    const my = localState.players[socket.id];
+    const selectMover = document.getElementById('select-mover-target');
+    const targetPlayerId = selectMover.value; // 드롭다운에서 선택 완료된 ID 바인딩
     
-    if (my.role === '운항 관리자') {
-        let choice = prompt("누구를 이동시키겠습니까?\n1: 나 자신\n2: 동료 요원", "1");
-        if (choice === "2") {
-            targetPlayerId = Object.keys(localState.players).find(id => id !== socket.id);
-            if (!targetPlayerId) { alert("이동시킬 동료가 아직 없습니다!"); return; }
-        } else if (choice !== "1") return; // 취소 처리
-    }
     socket.emit('playerAction', { type, target: targetCity, targetPlayerId }); 
     closeModal(); 
 }
@@ -163,11 +194,9 @@ function closeModal() { document.getElementById('action-modal').style.display='n
 function treat() { 
     const my = localState.players[socket.id];
     const city = localState.cities[my.location];
-    
     let activeColors = [];
     for(let col in city.cubes) { if(city.cubes[col] > 0) activeColors.push(col); }
-    
-    if(activeColors.length === 0) { alert("이 도시에는 치료할 질병이 없습니다."); return; }
+    if(activeColors.length === 0) { alert("치료할 수 있는 질병 큐브가 없습니다."); return; }
     
     let selectedColor = activeColors[0];
     if(activeColors.length > 1) {
@@ -189,20 +218,20 @@ function share() {
     const my = localState.players[socket.id];
     const partner = Object.values(localState.players).find(p => p.id !== socket.id);
     if(partner && partner.location === my.location) {
-        if(my.cards.length === 0) { alert("넘겨줄 카드가 없습니다."); return; }
+        if(my.cards.length === 0) { alert("양도할 카드가 없습니다."); return; }
         let cardList = my.cards.map(c => c.name).join(', ');
-        let cardName = prompt(`동료에게 넘겨줄 도시 카드를 입력하세요.\n(내 손패: ${cardList})`);
+        let cardName = prompt(`동료 요원에게 인계할 도시 카드명을 정확히 적어주세요.\n(내 보유: ${cardList})`);
         if(cardName) socket.emit('playerAction', {type:'share_give', cardName: cardName.trim()});
-    } else alert("같은 도시에 동료가 없습니다.");
+    } else alert("동일한 대피소/도시에 동료 요원이 상주해있지 않습니다.");
 }
 
 function useEvent(name) {
     let targetPlayerId = null;
-    if(name === "정부 보조금") targetCity = prompt("연구소를 지을 도시 이름을 입력하세요:");
+    if(name === "정부 보조금") targetCity = prompt("연구소를 무상 특설할 도시명을 기입하세요:");
     else if(name === "긴급 공중 수송") { 
-        targetCity = prompt("이동시킬 도시 이름을 입력하세요:"); 
-        let who = prompt("누구를 보낼까요? (1: 나, 2: 동료)"); 
+        targetCity = prompt("수송할 목적지 도시명:"); 
+        let who = prompt("누구를 수송 선박에 태울까요? (1: 나, 2: 동료 요원)"); 
         if(who === "2") targetPlayerId = Object.keys(localState.players).find(id => id !== socket.id);
-    } else if(name === "항체 보유자") targetCity = prompt("영구 제거할 감염 카드의 도시 이름을 입력하세요:");
+    } else if(name === "항체 보유자") targetCity = prompt("폐기 더미에서 완전 격리할 감염 카드 도시명:");
     socket.emit('useChanceCard', {cardName: name, targetCity, targetPlayerId});
 }
