@@ -68,25 +68,47 @@ socket.on('update', s => { localState = s; drawLines(); render(); });
 
 function openGuideModal() { document.getElementById('guide-modal').style.display = 'flex'; }
 
-// 🔥 4. 선이 다른 원을 침범하지 않고 맵 바깥(태평양)으로 자연스럽게 연결되게 래핑(Wrap-around) 로직 추가
+// 🔥 4. 맵 바깥(태평양)으로 자연스럽게 연결되는 선 컬러 지정 로직
 function drawLines() {
     const ctx = document.getElementById('map-canvas').getContext('2d');
     ctx.clearRect(0, 0, 1280, 720);
-    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.5;
+
     for (let name in cityPositions) {
         let from = cityPositions[name];
         if(!localState.cities[name]) continue;
+
         localState.cities[name].neighbors.forEach(n => {
             let to = cityPositions[n];
             if(to){
                 let dx = to.x - from.x;
-                if (Math.abs(dx) > 640) { // 화면 가로폭의 절반보다 멀면 맵 끝으로 연결
+                
+                // 1) 기본 연결선 색상은 반투명 하얀색
+                ctx.strokeStyle = "rgba(255,255,255,0.2)";
+
+                if (Math.abs(dx) > 640) { // 화면 가로폭 절반을 넘는 경우 = 태평양 횡단 노선
+                    
+                    // 2) 태평양 노선별 전용 색상 적용
+                    if ((name === '샌프란시스코' && n === '도쿄') || (name === '도쿄' && n === '샌프란시스코')) {
+                        ctx.strokeStyle = "#22c55e"; // 초록색
+                    } else if ((name === '샌프란시스코' && n === '마닐라') || (name === '마닐라' && n === '샌프란시스코')) {
+                        ctx.strokeStyle = "#ec4899"; // 핑크색
+                    } else if ((name === '로스앤젤레스' && n === '시드니') || (name === '시드니' && n === '로스앤젤레스')) {
+                        ctx.strokeStyle = "#06b6d4"; // 하늘색
+                    }
+
+                    // 선 긋기
                     ctx.beginPath();
                     ctx.moveTo(from.x, from.y);
                     ctx.lineTo(from.x < to.x ? -50 : 1330, (from.y + to.y) / 2);
                     ctx.stroke();
+
                 } else {
-                    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+                    // 일반 내부 노선 긋기
+                    ctx.beginPath(); 
+                    ctx.moveTo(from.x, from.y); 
+                    ctx.lineTo(to.x, to.y); 
+                    ctx.stroke();
                 }
             }
         });
@@ -148,7 +170,7 @@ function render() {
         }
         node.innerHTML = labelHtml + cubeHtml;
         
-        // 🔥 5. 말(Pawn)을 크고 직관적인 둥근 뱃지로 변경 (직업 첫 글자 사용)
+        // 🔥 5. 말(Pawn)을 크고 직관적인 둥근 뱃지로 변경
         let pawns = Object.values(localState.players).filter(p => p.location === name);
         if(pawns.length > 0) {
             const occ = document.createElement('div'); occ.className = 'city-occupants';
@@ -239,7 +261,6 @@ function sendAction(type) {
     closeModal(); 
 }
 
-// 🔥 7. 건축 전문가 전용 액션 처리 함수
 function sendOpsExpertMove() {
     let my = localState.players[socket.id];
     let cardList = my.cards.map(c => c.name).join(', ');
