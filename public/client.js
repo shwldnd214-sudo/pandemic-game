@@ -25,7 +25,6 @@ let targetCity = null;
 socket.on('forceReload', () => { location.reload(); });
 socket.on('systemAlert', (msg) => { alert(`⚠️ 작전 실패: ${msg}`); });
 
-// 🔥 턴 변경 알림 팝업 추가
 socket.on('turnChangeAlert', (data) => {
     const div = document.createElement('div');
     if (data.id === socket.id) {
@@ -36,7 +35,7 @@ socket.on('turnChangeAlert', (data) => {
         div.style.cssText = "background:rgba(51, 65, 85, 0.95); color:#cbd5e1; padding:10px 20px; border-radius:8px; font-weight:bold; font-size:14px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); animation: slideDown 0.3s, fadeOut 1s 1.5s forwards;";
     }
     document.getElementById('alert-layer').appendChild(div);
-    setTimeout(() => div.remove(), 3500); // 3.5초 뒤 자동 삭제
+    setTimeout(() => div.remove(), 3500); 
 });
 
 socket.on('epidemicAlert', (city) => {

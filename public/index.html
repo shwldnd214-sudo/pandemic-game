@@ -37,7 +37,6 @@
         @keyframes slideDown { 0% { transform: translateY(-50px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
         @keyframes fadeOut { 0% { opacity: 1; } 100% { opacity: 0; } }
         
-        /* 알림 팝업들이 쌓이는 구역 */
         #alert-layer { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 10px; align-items: center; }
     </style>
 </head>
@@ -74,8 +73,11 @@
                 <button class="btn" style="background:#3b82f6;" onclick="build()">🏢 연구소 건설</button>
                 <button class="btn" style="background:#10b981;" onclick="cure()">🧪 백신 연구</button>
                 <button class="btn" style="background:#8b5cf6;" onclick="share()">🤝 지식 공유</button>
-                <button class="btn" style="background:#f59e0b; color:black;" onclick="openGuideModal()">📘 능력/이벤트 가이드북</button>
-                <button class="btn" style="background:#7f1d1d; margin-top:8px;" onclick="if(confirm('진짜 방역 시뮬레이션을 리셋할까요?')) socket.emit('resetGame')">🔄 게임 리셋</button>
+                
+                <button class="btn" style="background:#475569; margin-top:5px; border: 1px solid #64748b;" onclick="if(confirm('남은 행동력을 모두 포기하고 턴을 종료하시겠습니까?')) socket.emit('playerAction', {type:'pass_turn'})">⏭️ 턴 강제 종료</button>
+
+                <button class="btn" style="background:#f59e0b; color:black; margin-top:10px;" onclick="openGuideModal()">📘 능력/이벤트 가이드북</button>
+                <button class="btn" style="background:#7f1d1d; margin-top:5px;" onclick="if(confirm('진짜 방역 시뮬레이션을 리셋할까요?')) socket.emit('resetGame')">🔄 게임 리셋</button>
             </div>
 
             <div id="card-section" class="panel-section" style="flex:1; overflow-y:auto;"></div>

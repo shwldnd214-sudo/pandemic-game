@@ -7,6 +7,7 @@ const io = require('socket.io')(http, {
 
 app.use(express.static('public'));
 
+// 🔥 산티아고 <-> 부에노스아이레스 연결 복구
 const cityData = {
     "샌프란시스코": { color: "#3498db", neighbors: ["시카고", "로스앤젤레스", "도쿄", "마닐라"] }, 
     "시카고": { color: "#3498db", neighbors: ["샌프란시스코", "로스앤젤레스", "몬트리올", "애틀랜타", "멕시코시티"] }, 
@@ -25,7 +26,7 @@ const cityData = {
     "마이애미": { color: "#f1c40f", neighbors: ["애틀랜타", "워싱턴", "멕시코시티", "보고타"] }, 
     "보고타": { color: "#f1c40f", neighbors: ["멕시코시티", "마이애미", "리마", "상파울루"] }, 
     "리마": { color: "#f1c40f", neighbors: ["보고타", "산티아고"] }, 
-    "산티아고": { color: "#f1c40f", neighbors: ["리마"] }, 
+    "산티아고": { color: "#f1c40f", neighbors: ["리마", "부에노스아이레스"] }, // 수정됨!
     "부에노스아이레스": { color: "#f1c40f", neighbors: ["산티아고", "상파울루"] }, 
     "상파울루": { color: "#f1c40f", neighbors: ["보고타", "부에노스아이레스", "마드리드", "라고스"] }, 
     "라고스": { color: "#f1c40f", neighbors: ["상파울루", "킨샤샤", "카르툼"] }, 
@@ -62,7 +63,7 @@ const roleDetails = {
     '운항 관리자': { color: '#b45309', desc: '✈️ 다른 플레이어의 말을 이동시키거나 합류시킵니다.' },
     '건축 전문가': { color: '#a855f7', desc: '🏢 연구소 건설 시 카드가 불필요하며, 연구소에서 아무 카드나 1장 버리고 전 세계 어디든 갑니다.' },
     '과학자': { color: '#22c55e', desc: '🧪 같은 색상 카드 4장만으로 치료제를 개발합니다.' },
-    '위생병': { color: '#f97316', desc: '🚑 치료 시 도시의 해당 색상 모든 큐브를 제거하며, 백신 개발 후엔 액션 없이 완치시킵니다.' },
+    '위생병': { color: '#f97316', desc: '🚑 치료 시 도시의 해당 색상 모든 큐브를 제거하며, 백신 개발 후엔 턴 소모 없이 밟기만 해도 완치시킵니다.' },
     '연구원': { color: '#d97706', desc: '🤝 같은 도시에 있다면 조건 없이 아무 카드나 동료에게 줄 수 있습니다.' },
     '검역 전문가': { color: '#15803d', desc: '🛡️ 현재 위치한 도시와 인접한 도시들의 감염을 완벽히 차단합니다.' }
 };
@@ -139,8 +140,6 @@ function initGame() {
     }
     
     gameState.playerDeck = [];
-    
-    // [수정된 부분]: 각 묶음에 전염 카드를 확실히 1장씩 넣고, 해당 묶음을 통째로 섞은 뒤 덱에 쌓습니다.
     for (let i = 3; i >= 0; i--) {
         let chunk = chunks[i];
         chunk.push({ name: "⚠️ 전염 발생", type: "epidemic" }); 
@@ -217,7 +216,6 @@ function finishTurnPhase() {
         }
     }
     
-    // 턴 변경 로직
     const ids = Object.keys(gameState.players);
     let idx = ids.indexOf(gameState.currentTurnPlayer);
     gameState.currentTurnPlayer = ids[(idx + 1) % ids.length];
@@ -226,7 +224,6 @@ function finishTurnPhase() {
     gameState.discardPlayerId = null;
     gameState.log.unshift(`--- 작전권 이양 ---`);
 
-    // 🔥 턴 변경 알림 쏘기
     io.emit('turnChangeAlert', { 
         id: gameState.currentTurnPlayer, 
         role: gameState.players[gameState.currentTurnPlayer].role 
@@ -302,7 +299,13 @@ io.on('connection', (socket) => {
 
         let actionTaken = false;
 
-        if (data.type === 'move_drive') {
+        // 🔥 수동 턴 넘기기
+        if (data.type === 'pass_turn') {
+            gameState.actionsLeft = 0;
+            actionTaken = true;
+            gameState.log.unshift(`⏭️ ${p.role}이(가) 남은 행동력을 포기하고 턴을 넘겼습니다.`);
+        }
+        else if (data.type === 'move_drive') {
             if (cityData[targetP.location].neighbors.includes(data.target)) { 
                 targetP.location = data.target; gameState.actionsLeft--; actionTaken = true; 
             }
@@ -391,6 +394,24 @@ io.on('connection', (socket) => {
             return; 
         }
 
+        // 🔥 위생병 패시브 로직 (이동이나 액션 후 위생병이 있는 도시에 개발된 큐브가 있으면 즉시 제거)
+        let medic = Object.values(gameState.players).find(u => u.role === '위생병');
+        if (medic) {
+            let city = gameState.cities[medic.location];
+            let clearedAny = false;
+            for (let col in city.cubes) {
+                if (city.cubes[col] > 0 && gameState.cures[col]) {
+                    city.cubes[col] = 0;
+                    checkEradication(col);
+                    clearedAny = true;
+                }
+            }
+            if (clearedAny) {
+                gameState.log.unshift(`🚑 [위생병 자동 소독] ${medic.location}의 개발 완료된 질병이 턴 소모 없이 즉시 제거되었습니다!`);
+            }
+        }
+
+        // 행동력이 0이 되면 턴 종료 페이즈 돌입 (위생병 4번째 행동으로 이동해도 큐브 지우고 나서 종료됨)
         if (gameState.actionsLeft === 0) {
             for (let k = 0; k < 2; k++) {
                 if (gameState.playerDeck.length > 0) {
