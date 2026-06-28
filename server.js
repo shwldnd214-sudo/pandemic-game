@@ -139,10 +139,12 @@ function initGame() {
     }
     
     gameState.playerDeck = [];
+    
+    // [수정된 부분]: 각 묶음에 전염 카드를 확실히 1장씩 넣고, 해당 묶음을 통째로 섞은 뒤 덱에 쌓습니다.
     for (let i = 3; i >= 0; i--) {
-        let chunk = shuffle(chunks[i]);
-        let insertPos = Math.floor(Math.random() * (chunk.length / 2)); 
-        chunk.splice(insertPos, 0, { name: "⚠️ 전염 발생", type: "epidemic" });
+        let chunk = chunks[i];
+        chunk.push({ name: "⚠️ 전염 발생", type: "epidemic" }); 
+        chunk = shuffle(chunk); 
         gameState.playerDeck.push(...chunk);
     }
 
