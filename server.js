@@ -7,7 +7,6 @@ const io = require('socket.io')(http, {
 
 app.use(express.static('public'));
 
-// 🔥 산티아고 <-> 부에노스아이레스 연결 복구
 const cityData = {
     "샌프란시스코": { color: "#3498db", neighbors: ["시카고", "로스앤젤레스", "도쿄", "마닐라"] }, 
     "시카고": { color: "#3498db", neighbors: ["샌프란시스코", "로스앤젤레스", "몬트리올", "애틀랜타", "멕시코시티"] }, 
@@ -26,7 +25,7 @@ const cityData = {
     "마이애미": { color: "#f1c40f", neighbors: ["애틀랜타", "워싱턴", "멕시코시티", "보고타"] }, 
     "보고타": { color: "#f1c40f", neighbors: ["멕시코시티", "마이애미", "리마", "상파울루"] }, 
     "리마": { color: "#f1c40f", neighbors: ["보고타", "산티아고"] }, 
-    "산티아고": { color: "#f1c40f", neighbors: ["리마", "부에노스아이레스"] }, // 수정됨!
+    "산티아고": { color: "#f1c40f", neighbors: ["리마", "부에노스아이레스"] }, 
     "부에노스아이레스": { color: "#f1c40f", neighbors: ["산티아고", "상파울루"] }, 
     "상파울루": { color: "#f1c40f", neighbors: ["보고타", "부에노스아이레스", "마드리드", "라고스"] }, 
     "라고스": { color: "#f1c40f", neighbors: ["상파울루", "킨샤샤", "카르툼"] }, 
@@ -60,7 +59,7 @@ const cityData = {
 };
 
 const roleDetails = {
-    '운항 관리자': { color: '#b45309', desc: '✈️ 다른 플레이어의 말을 이동시키거나 합류시킵니다.' },
+    '운항 관리자': { color: '#b45309', desc: '✈️ 동료를 조종하거나, 내 말과 동료의 말을 합류시킬 수 있습니다.' },
     '건축 전문가': { color: '#a855f7', desc: '🏢 연구소 건설 시 카드가 불필요하며, 연구소에서 아무 카드나 1장 버리고 전 세계 어디든 갑니다.' },
     '과학자': { color: '#22c55e', desc: '🧪 같은 색상 카드 4장만으로 치료제를 개발합니다.' },
     '위생병': { color: '#f97316', desc: '🚑 치료 시 도시의 해당 색상 모든 큐브를 제거하며, 백신 개발 후엔 턴 소모 없이 밟기만 해도 완치시킵니다.' },
@@ -299,7 +298,6 @@ io.on('connection', (socket) => {
 
         let actionTaken = false;
 
-        // 🔥 수동 턴 넘기기
         if (data.type === 'pass_turn') {
             gameState.actionsLeft = 0;
             actionTaken = true;
@@ -321,12 +319,25 @@ io.on('connection', (socket) => {
                 targetP.location = data.target; gameState.actionsLeft--; actionTaken = true; 
             }
         }
-        else if (data.type === 'move_gather' && p.role === '운항 관리자') {
-            let hasOther = Object.values(gameState.players).some(u => u.location === data.target && u.id !== targetP.id);
+        
+        // 🔥 운항 관리자 신규 합류 능력: 내 말을 동료에게 이동
+        else if (data.type === 'gather_me_to_colleague' && p.role === '운항 관리자') {
+            let hasOther = Object.values(gameState.players).some(u => u.location === data.target && u.id !== p.id);
             if (hasOther) {
-                targetP.location = data.target; gameState.actionsLeft--; actionTaken = true;
+                p.location = data.target; gameState.actionsLeft--; actionTaken = true;
+                gameState.log.unshift(`✈️ [운항 관리자] 동료가 위치한 ${data.target}(으)로 이동했습니다.`);
             }
         }
+        
+        // 🔥 운항 관리자 신규 합류 능력: 동료를 내 위치로 호출
+        else if (data.type === 'gather_colleague_to_me' && p.role === '운항 관리자') {
+            let targetColleague = gameState.players[data.targetPlayerId];
+            if (targetColleague && p.location === data.target) {
+                targetColleague.location = data.target; gameState.actionsLeft--; actionTaken = true;
+                gameState.log.unshift(`✈️ [운항 관리자] ${targetColleague.role} 요원을 내 위치(${data.target})로 호출했습니다.`);
+            }
+        }
+        
         else if (data.type === 'move_ops_expert' && p.role === '건축 전문가') {
             if (gameState.cities[p.location].hasResearchStation && cityData[data.target]) {
                 let idx = p.cards.findIndex(c => c.name === data.cardName);
@@ -394,7 +405,6 @@ io.on('connection', (socket) => {
             return; 
         }
 
-        // 🔥 위생병 패시브 로직 (이동이나 액션 후 위생병이 있는 도시에 개발된 큐브가 있으면 즉시 제거)
         let medic = Object.values(gameState.players).find(u => u.role === '위생병');
         if (medic) {
             let city = gameState.cities[medic.location];
@@ -411,7 +421,6 @@ io.on('connection', (socket) => {
             }
         }
 
-        // 행동력이 0이 되면 턴 종료 페이즈 돌입 (위생병 4번째 행동으로 이동해도 큐브 지우고 나서 종료됨)
         if (gameState.actionsLeft === 0) {
             for (let k = 0; k < 2; k++) {
                 if (gameState.playerDeck.length > 0) {

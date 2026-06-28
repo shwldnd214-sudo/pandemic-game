@@ -73,9 +73,7 @@
                 <button class="btn" style="background:#3b82f6;" onclick="build()">🏢 연구소 건설</button>
                 <button class="btn" style="background:#10b981;" onclick="cure()">🧪 백신 연구</button>
                 <button class="btn" style="background:#8b5cf6;" onclick="share()">🤝 지식 공유</button>
-                
                 <button class="btn" style="background:#475569; margin-top:5px; border: 1px solid #64748b;" onclick="if(confirm('남은 행동력을 모두 포기하고 턴을 종료하시겠습니까?')) socket.emit('playerAction', {type:'pass_turn'})">⏭️ 턴 강제 종료</button>
-
                 <button class="btn" style="background:#f59e0b; color:black; margin-top:10px;" onclick="openGuideModal()">📘 능력/이벤트 가이드북</button>
                 <button class="btn" style="background:#7f1d1d; margin-top:5px;" onclick="if(confirm('진짜 방역 시뮬레이션을 리셋할까요?')) socket.emit('resetGame')">🔄 게임 리셋</button>
             </div>
@@ -100,7 +98,7 @@
         <h3 id="modal-city-name" style="margin-top:0; margin-bottom:12px; text-align:center; color:white; font-size:15px;">도시 명령어</h3>
         
         <div id="mover-selection-zone" style="margin-bottom:12px; background:#0f172a; padding:8px; border-radius:6px; border:1px solid #334155; display:none;">
-            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">🎯 이동시킬 작전 요원 선택:</label>
+            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">🎯 타 요원 대리 이동 (운항관리자):</label>
             <select id="select-mover-target" style="width:100%; background:#1e293b; color:white; border:1px solid #475569; padding:6px; border-radius:4px; font-weight:bold; font-size:12px;"></select>
         </div>
 
@@ -108,7 +106,9 @@
         <button class="btn-action" onclick="sendAction('move_direct')">✈️ 직항 비행 (해당 도시 카드 소모)</button>
         <button class="btn-action" onclick="sendAction('move_charter')">🗺️ 전역 노선 (현재 도시 카드 소모)</button>
         <button class="btn-action" onclick="sendAction('move_shuttle')">🚀 셔틀 비행 (연구소 ↔ 연구소)</button>
-        <button id="btn-dispatcher-gather" class="btn-action" style="background:#b45309; display:none;" onclick="sendAction('move_gather')">✈️ 요원 합류 (운항관리자 전용)</button>
+        
+        <button id="btn-dispatcher-gather-me" class="btn-action" style="background:#b45309; display:none;" onclick="sendGatherMe()">✈️ 내 말을 동료 위치로 워프 (운항관리자)</button>
+        <button id="btn-dispatcher-gather-colleague" class="btn-action" style="background:#b45309; display:none;" onclick="sendGatherColleague()">✈️ 동료를 내 위치로 호출 (운항관리자)</button>
         
         <button id="btn-ops-expert" class="btn-action" style="background:#a855f7; display:none;" onclick="sendOpsExpertMove()">✈️ 기지 특수 비행 (아무 카드나 1장 버리기)</button>
 

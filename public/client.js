@@ -230,11 +230,24 @@ function openModal(name) {
         moverZone.style.display = 'none';  
     }
     
-    const gatherBtn = document.getElementById('btn-dispatcher-gather');
-    if (gatherBtn) {
-        const hasOtherPlayer = Object.values(localState.players).some(p => p.location === name && p.id !== socket.id);
-        if (my.role === '운항 관리자' && hasOtherPlayer) gatherBtn.style.display = 'block';
-        else gatherBtn.style.display = 'none';
+    // 🔥 운항 관리자 전용 합류 버튼 2개 제어
+    const gatherMeBtn = document.getElementById('btn-dispatcher-gather-me');
+    const gatherColleagueBtn = document.getElementById('btn-dispatcher-gather-colleague');
+    
+    if (gatherMeBtn && gatherColleagueBtn) {
+        gatherMeBtn.style.display = 'none';
+        gatherColleagueBtn.style.display = 'none';
+        
+        if (my.role === '운항 관리자') {
+            const hasColleagueHere = Object.values(localState.players).some(p => p.location === name && p.id !== socket.id);
+            if (hasColleagueHere && my.location !== name) {
+                gatherMeBtn.style.display = 'block';
+            }
+            if (my.location === name) {
+                const existsColleagueElsewhere = Object.values(localState.players).some(p => p.id !== socket.id && p.location !== name);
+                if (existsColleagueElsewhere) gatherColleagueBtn.style.display = 'block';
+            }
+        }
     }
     
     const opsBtn = document.getElementById('btn-ops-expert');
@@ -255,6 +268,31 @@ function sendAction(type) {
     
     socket.emit('playerAction', { type, target: targetCity, targetPlayerId }); 
     closeModal(); 
+}
+
+// 🔥 운항 관리자 합류 전송 함수 추가
+function sendGatherMe() {
+    socket.emit('playerAction', { type: 'gather_me_to_colleague', target: targetCity });
+    closeModal();
+}
+
+function sendGatherColleague() {
+    let colleagues = Object.values(localState.players).filter(p => p.id !== socket.id && p.location !== targetCity);
+    if (colleagues.length === 0) return;
+    
+    let targetColleagueId = colleagues[0].id;
+    if (colleagues.length > 1) {
+        let menu = colleagues.map((c, i) => `${i+1}. ${c.role}`).join('\n');
+        let choice = prompt(`누구를 호출하시겠습니까?\n${menu}`, "1");
+        if (choice) {
+            let idx = parseInt(choice) - 1;
+            if (colleagues[idx]) targetColleagueId = colleagues[idx].id;
+            else { alert("잘못된 선택입니다."); return; }
+        } else return;
+    }
+    
+    socket.emit('playerAction', { type: 'gather_colleague_to_me', target: targetCity, targetPlayerId: targetColleagueId });
+    closeModal();
 }
 
 function getValidCardFromPrompt(msg, cardList) {
